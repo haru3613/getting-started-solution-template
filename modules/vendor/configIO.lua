@@ -5,14 +5,31 @@
 -- This file is in the 'vendor' safeNamespace and changes will persists upon template updates
 
 local config_io = [[
- {
+{
   "channels": {
-    "005": {
+    "machine_status": {
       "display_name": "Machine Status",
       "description": "Device reported status",
       "properties": {
         "data_type": "STRING",
         "primitive_type": "STRING"
+      }
+    },
+    "temperature": {
+      "display_name": "Temperature",
+      "description": "Temperature Sensor Reading",
+      "properties": {
+        "data_type": "TEMPERATURE",
+        "primitive_type": "NUMERIC",
+        "data_unit": "DEG_CELSIUS"
+      }
+    },
+    "button_push": {
+      "display_name": "Button On/off",
+      "description": "Activate or not",
+      "properties": {
+        "data_type": "BOOLEAN",
+        "control": true
       }
     }
   }

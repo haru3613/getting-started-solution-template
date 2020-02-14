@@ -20,10 +20,6 @@ env_schema:
   description: |
     This will show on Murano Connector page.
     Describe the 3rd party integration setup, with link to related documentation.
-  callback_token: # This token is only needed if not 3rd party API swagger service is defined
-    title: Callback Token
-    type: string
-    description: The callback token. Used in `c2c.authentication` module.
 
 endpoints:
   location: endpoints

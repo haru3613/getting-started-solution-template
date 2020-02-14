@@ -1,64 +1,114 @@
 local murano2cloud = {}
 -- This module maps local changes and propagate them to the 3rd party cloud
--- The operation must follow the 3rd party service swagger definition you published from ../DummyCloudService.yaml
 
-murano2cloud.alias = "Dummycloudservice"
--- Change this matching the 3rd party Murano service alias, needs to be first letter up, rest lowercasey
-
+local device2  = murano.services.device2
 local transform = require("vendor.c2c.transform")
 local cloud2murano = require("c2c.cloud2murano")
+local c = require("c2c.vmcache")
 
--- Below function needs to use the operations defined in the 3rd party Service (/dummycloudservice.yaml) to apply the syncronisation
--- Functions defined in murano2cloud modules matching the Device2 interface will be called by the device2.lua proxy module
--- Which 1st call below functions, 2nd call the Device2 related operation.
--- See all operations available in http://docs.exosite.com/reference/services/device2
 
-function murano2cloud.addIdentity(data)
-  local result = murano.services[murano2cloud.alias].addIdentity({ identity = data.identity })
-  if result and result.error then return result end
-  return data
+function dummyEventAcknowledgement(operation) 
+  --  Need to confirm to exosense like device got Mqtt downlink, by creating this fake event
+  local payload = {{
+    -- it relies on data_out
+    values = {data_out = operation.data_out},
+    timestamp = os.time()*1000000
+  }}
+  local event = {
+    type = "data_in",
+    identity = operation.identity,
+    timestamp = os.time()*1000000,
+    payload = payload
+  }
+  if handle_device2_event then
+    return handle_device2_event(event)
+  end
 end
 
-function murano2cloud.removeIdentity(data)
-  local result = murano.services[murano2cloud.alias].removeIdentity({ identity = data.identity })
-  if result and result.error then return result end
-  return data
+-- function which is the real setIdentityState, dedicated for data_out 
+function murano2cloud.updateWithMqtt(data, topic)
+  local table_result = transform.data_out and transform.data_out(from_json(data.data_out)) -- template user customized data transforms
+  if table_result ~= nil then
+    local data_downlink = {}
+    local message, error = device2.setIdentityState(data)
+    if error then
+      log.error(error)
+      return false
+    end
+     -- As data is just the small message to send, need to get some meta data to publish to tx
+    data_downlink = {
+      ["identity"] = data.identity,
+      -- Auto-generated
+      ["ref"] = rand_bytes(12),
+      ["data"] = table_result.data
+    }
+    Mqtt.publish({messages={{topic = topic, message = to_json(data_downlink)}}})
+    -- create fake event to simulate acknowledgment, fast and blindness logic.
+    -- otherwise would wait for acknowledgment on /ack topic, and inside fields should match with ref field of downlink and identity of device
+    return dummyEventAcknowledgement(data)
+  else
+    log.error("Didn't send any Downlink: no Transform configured.")
+    return false
+  end
 end
 
+-- function getTopicUseCache(data)
+--   --return : topic. They are taken from cache
+--   --if any in cache will call getidentityState and generate it.
+--   local topic = c.get(data.identity) 
+--   if topic == nil then
+--     --regenerate cache, took from mqtt services parameters
+--     print("regenerating cache for topic")
+--     local retrieved_data = Config.getParameters({service = 'mqtt'})
+--     if retrieved_data.parameters.topics and #(retrieved_data.parameters.topics)>1 then
+--       topic = c.set(data.identity,retrieved_data.parameters.topics[2],6*60*60)
+--     else
+--       log.error("Didn't send any Downlink: no topic for downlink (2nd topic)")
+--     end
+
+--   end
+--   return topic
+-- end
+
+function getTopic(data)
+  --return : topic. They are taken from mqtt service parameters at second topic , can change
+  local topic = nil
+  local retrieved_data = Config.getParameters({service = 'mqtt'})
+  if retrieved_data.parameters.topics and #(retrieved_data.parameters.topics)>1 then
+    topic = retrieved_data.parameters.topics[2]
+  else
+    log.error("Didn't send any Downlink: no topic for downlink (2nd topic)")
+  end
+  return topic
+end
+
+-- Below function uses the operations of device2, overload it.
+-- See all operations available in http://docs.exosite.com/reference/services/device2,
+-- but will need to associate a custom interface (see services/interface/configure_operations)
+-- data should be incoming data from Exosense
 function murano2cloud.setIdentityState(data)
-  local remoteData = transform.data_out(data) -- template user customized data transforms
-  local result = murano.services[murano2cloud.alias].setIdentitystate({ identity = data.identity, data = to_json(remoteData) })
-  if result and result.error then return result end
-  return data
-end
-
-function murano2cloud.listIdentities(data)
-  local result = murano2cloud.syncAll({notrigger = true}) -- see below
-  if result and result.error then return result end
-  return data
-end
-
--- Fetch and update 1 device, for lazy update
-function murano2cloud.getIdentityState(data)
-  local result = murano.services[murano2cloud.alias].getIdentityState({ identity = data.identity })
-  if result then
-    if result.error then return result end
-    cloud2murano.data_in(data.identity, result, {notrigger = true})
+  if data.identity ~= nil then
+    if data.config_io ~= nil then
+      --just update config_io here
+      return device2.setIdentityState(data)
+    end
+    if data.data_out ~= nil then
+      --specific to value in data_out, a port is associated, details in config_io channels, on exosense
+      -- local old_topic = getTopicUseCache(data)
+      local topic = getTopic(data)
+      if topic ~= nil then
+        return murano2cloud.updateWithMqtt(data, topic)
+      end
+    end
   end
-  return data
 end
 
--- Note: you can also overload the native Device2 service object to bypass the `c2c.device2` wrapper.
--- Eg function Device2.getIdentityState(data)
-
--- Function for recurrent pool action (not matching Device2 operations)
-function murano2cloud.syncAll(options)
-  local result = murano.services[murano2cloud.alias].sync()
-  if result.error then
-    log.error(result.error)
-    return result
+-- Function for recurrent pool action
+function murano2cloud.syncAll(data)
+  if data ~= nil then
+    return Device2.getIdentityState(data)
   end
-  return cloud2murano.callback(data, options)
+  return nil
 end
 
 return murano2cloud
