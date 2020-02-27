@@ -1,6 +1,7 @@
 -- This module handle 'configIO' metadata generation for Exosense applications
--- Define here the device data schema as describe in https://github.com/exosite/industrial_iot_schema
--- Limitation: Exosense currently cannot modify per device schema
+-- Define & customize here the device data schema matching your devices settings, as described in https://github.com/exosite/industrial_iot_schema
+-- This schema will be applied by default to all devices. However, user can update it through ExoSense per device.
+-- IMPORTANT: All channels configuration MUST defines the device sensor port number in the attribute `protocol_config.app_specific_config.port`
 --
 -- This file is in the 'vendor' safeNamespace and changes will persists upon template updates
 
@@ -13,6 +14,11 @@ local config_io = [[
       "properties": {
         "data_type": "STRING",
         "primitive_type": "STRING"
+      },
+      "protocol_config": {
+        "app_specific_config": {
+          "port": 1
+        }
       }
     },
     "temperature": {
@@ -22,18 +28,23 @@ local config_io = [[
         "data_type": "TEMPERATURE",
         "primitive_type": "NUMERIC",
         "data_unit": "DEG_CELSIUS"
+      },
+      "protocol_config": {
+        "app_specific_config": {
+          "port": 1
+        }
       }
     },
     "button_push": {
       "display_name": "Button On/off",
-      "description": "Activate or not",
+      "description": "This is an out-going data example.",
       "properties": {
         "data_type": "BOOLEAN",
         "control": true
       },
       "protocol_config": {
         "app_specific_config": {
-          "port": -1
+          "port": 5
         }
       }
     }

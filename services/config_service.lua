@@ -1,7 +1,7 @@
 
 local murano2cloud = require("c2c.murano2cloud")
 
--- This event listen to the changes made on the mqtt to change automitcally initial dedicated topic
+-- This event listen to the changes made on the mqtt to change automatically initial dedicated topic
 if service.service == "mqtt" and service.action == "updated" then
   local result = Config.getParameters({service = service.service})
   if result.parameters.security ~= nil and result.parameters.security.username ~= '' and result.parameters.security.username ~= '--' then

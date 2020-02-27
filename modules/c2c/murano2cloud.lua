@@ -6,7 +6,7 @@ local transform = require("vendor.c2c.transform")
 local cloud2murano = require("c2c.cloud2murano")
 local c = require("c2c.vmcache")
 
--- create a random port for downlink
+-- create a random ref for downlink
 function rand_bytes(length)
   local res = ""
   for i = 1, length do
@@ -15,23 +15,6 @@ function rand_bytes(length)
   return res
 end
 
-function getPortUseConfigIO(values, document)
-  if values ~= nil then
-    for key, i in pairs(values) do
-      if type(document) == "table" and document.channels and document.channels[key] and document.channels[key].protocol_config and document.channels[key].protocol_config.app_specific_config and document.channels[key].protocol_config.app_specific_config.port then 
-        return tostring(document.channels[key].protocol_config.app_specific_config.port)
-      end
-    end
-  end
-  return nil
-end
-
-function getChannel(json_doc)
-  for key,value in pairs(from_json(json_doc)) do
-    return key
-  end
-  return nil
-end
 
 function dummyEventAcknowledgement(operation) 
   --  Need to confirm to exosense like device got Mqtt downlink, by creating this fake event
@@ -79,43 +62,6 @@ function murano2cloud.updateWithMqtt(data, topic, port)
   end
 end
 
-function getTopicPortUseCache(data)
-  --return : topic, port . They are taken from cache
-  --if any in cahce will call getidentityState and generate it.
-  local topic = c.get(data.identity .. "0")
-  local channel = getChannel(data.data_out)
-  local port = c.get(data.identity .. channel .. "1")
-  if topic == nil or port == nil then
-    --regenerate cache, not call each time
-    print("regenerating cache for topic or port")
-    local retrieved_data = device2.getIdentityState({identity = data.identity})
-    --If user specify specific Timeout
-    vm_cache_timeout = 600 or os.getenv("VMCACHE_TIMEOUT")
-    if topic == nil then
-      if retrieved_data.lorawan_meta ~= nil then
-        --add 0 at the end of name to make sure not access to port cache
-        topic = c.set(data.identity.."0",from_json(retrieved_data.lorawan_meta.reported).topic,vm_cache_timeout)
-      else
-        log.error("Didn't send any Downlink: no Uplink got initially")
-      end
-    end
-    if port == nil then
-      if retrieved_data.config_io ~= nil then
-        local port_temp = getPortUseConfigIO(from_json(data.data_out),from_json(retrieved_data.config_io.reported))
-        if port_temp ~= nil then
-          -- add channel also to be unique and 1 to the end to make sure access to port cache, not topic
-          port = c.set(data.identity.. channel .."1",port_temp,vm_cache_timeout)
-        else
-          log.error("Didn't send any Downlink: no matching values from channels in confifIO and data_out, or no port added")
-        end
-      else
-        log.error("Didn't send any Downlink: no exosense channel defined")
-      end
-    end
-  end
-  return topic, port
-end
-
 -- Below function uses the operations of device2, overload it.
 -- See all operations available in http://docs.exosite.com/reference/services/device2,
 -- but will need to associate a custom interface ( see services/interface/configure_operations)
@@ -128,8 +74,12 @@ function murano2cloud.setIdentityState(data)
     end
     if data.data_out ~= nil then
       --specific to value in data_out, a port is associated, details in config_io channels, on exosense
-      local old_topic,port_config_io = getTopicPortUseCache(data)
-      if old_topic ~= nil and port_config_io ~= nil then
+      local old_topic,port_config_io = c.getTopicPortUseCache(data)
+      if old_topic == nil then
+        log.error("Didn't send any Downlink: no Uplink got initially")
+      elseif port_config_io == nil then
+        log.error("Didn't send any Downlink: no matching values from channels in configIO and data_out, or no port added")
+      else
         local downlink_topic = string.sub(old_topic, 0, old_topic:match'^.*()/').."tx"
         return murano2cloud.updateWithMqtt(data, downlink_topic, port_config_io)
       end
