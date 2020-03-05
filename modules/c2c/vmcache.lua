@@ -158,7 +158,7 @@ function cache.getTopicPortUseCache(data_device_downlink)
   if channel ~= nil then
     if topic == nil or port == nil then
       --regenerate cache, not call each time
-      cacheFactory(options)
+      cache.cacheFactory(options)
       topic = cache.get(data_device_downlink.identity .. "0")
       port = cache.get(data_device_downlink.identity .. channel .. "1")
     end
