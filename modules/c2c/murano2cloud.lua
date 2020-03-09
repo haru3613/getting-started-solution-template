@@ -15,7 +15,6 @@ function rand_bytes(length)
   return res
 end
 
-
 function dummyEventAcknowledgement(operation) 
   --  Need to confirm to exosense like device got Mqtt downlink, by creating this fake event
   local payload = {{
@@ -52,7 +51,7 @@ function murano2cloud.updateWithMqtt(data, topic, port)
       ["port"] = port,
       ["data"] = table_result.data
     }
-    Mqtt.publish({messages={{topic = topic, message = to_json(data_downlink)}}})
+    Mqtt.publish({messages={{topic = topic, message = data_downlink}}})
     -- create fake event to simulate acknowledgment, fast and blindness logic.
     -- otherwise would wait for acknowledgment on /ack topic, and inside fields should match with ref field of downlink and identity of device
     return dummyEventAcknowledgement(data)
