@@ -87,7 +87,7 @@ end
 
 function cloud2murano.detect_uplink(full_topic)
   local last_part = string.sub(full_topic, full_topic:match'^.*()/')
-  if last_part == 'uplink' then
+  if last_part == '/uplink' then
     return true
   end
   return false
@@ -118,7 +118,7 @@ function cloud2murano.callback(cloud_data_array, options)
         final_state.identity = data.identity
         -- Transform will parse data, depending channel value -got from port-
         -- Decoding logic can handle several channel linked with same port, just configure it in transform.uplink_decoding 
-        final_state.data_in = transform.data_in and transform.data_in(data)
+        final_state = transform.data_in(data)
         if final_state.data_in == nil then
           log.warn('Cannot find transform module, should uncomment module')
         end

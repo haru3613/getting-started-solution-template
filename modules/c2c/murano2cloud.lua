@@ -6,6 +6,14 @@ local transform = require("vendor.c2c.transform")
 local cloud2murano = require("c2c.cloud2murano")
 local c = require("c2c.vmcache")
 
+-- create a random ref for downlink
+function rand_bytes(length)
+  local res = ""
+  for i = 1, length do
+      res = res .. string.char(math.random(97, 122))
+  end
+  return res
+end
 
 function dummyEventAcknowledgement(operation) 
   --  Need to confirm to exosense like device got Mqtt downlink, by creating this fake event
@@ -42,7 +50,7 @@ function murano2cloud.updateWithMqtt(data, topic)
       ["ref"] = rand_bytes(12),
       ["data"] = table_result.data
     }
-    Mqtt.publish({messages={{topic = topic, message = to_json(data_downlink)}}})
+    Mqtt.publish({messages={{topic = topic, message = data_downlink}}})
     -- create fake event to simulate acknowledgment, fast and blindness logic.
     -- otherwise would wait for acknowledgment on /ack topic, and inside fields should match with ref field of downlink and identity of device
     return dummyEventAcknowledgement(data)
@@ -54,7 +62,7 @@ end
 
 -- function getTopicUseCache(data)
 --   --return : topic. They are taken from cache
---   --if any in cache will call getidentityState and generate it.
+--   --if any in cache will call mqtt service parameters and generate it from topic entries.
 --   local topic = c.get(data.identity) 
 --   if topic == nil then
 --     --regenerate cache, took from mqtt services parameters

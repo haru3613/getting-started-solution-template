@@ -9,8 +9,8 @@ function transform.data_in(cloud_data)
   return {
     -- Required device identity
     identity = cloud_data.identity or cloud_data.device_id,
-    -- Device data, here following ExoSense data model
-    data_in = cloud_data
+    -- Device data, here following ExoSense data model, or just data_in if no modif.
+    data_in = cloud_data.data_in
   }
 end
 
