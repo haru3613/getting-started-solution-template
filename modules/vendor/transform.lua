@@ -42,25 +42,31 @@ local transform = {}
 --   return json.stringify(data_in)
 -- end
 
+-- function transform.decodeMode(uplink)
+--   local mode = parser_factory.getuint(parser_factory.fromhex(uplink),0,8)
+--   if mode == 4 then
+--     return "motion"
+--   elseif mode == 0 then
+--     return "timer"
+--   else
+--     return "unknown"
+--   end
+-- end
 
 -- function transform.convertIdentityState(state)
---   if state == nil or state.data_in == nil then
---     return state
+--   if state == nil then return state end
+
+--   if state.uplink ~= nil then
+--     if state.data_in == nil then state.data_in = {} end
+--     -- Parse first byte and save it to data_in
+--     state.data_in.status_mode = transform.decodeMode(state.uplink)
+--     -- Parse more bytes
+--     -- ...
+--     -- ...
 --   end
 
--- Below an example of transforming uplink message from a device
--- decoded values in string will be then stored in data_in
---   if type(state.uplink) == "table" then
---     state.data_in = json.stringify(transform.DecodeMode(state.uplink.reported))
---   else
---     state.data_in = json.stringify(transform.DecodeMode(state.uplink))
---   end
-
---   if state.data_in.reported == nil then
---     state.data_in = convertState(state.data_in)
---   else
---     state.data_in.reported = convertState(state.data_in.reported)
---     state.data_in.set = convertState(state.data_in.set)
+--   if state.data_in and type(state.data_in) ~= "string" then
+--     state.data_in = to_json(state.data_in)
 --   end
 
 --   return state
