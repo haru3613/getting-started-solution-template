@@ -85,6 +85,11 @@ function cloud2murano.data_in(identity, data, options)
   return cloud2murano.trigger(identity, "data_in", payload, options)
 end
 
+function cloud2murano.getIdentityTopic(full_topic)
+  local temp = string.sub(full_topic,0,full_topic:match'^.*()/'-1)
+  return string.sub(temp, temp:match'^.*()/'+1)
+end
+
 function cloud2murano.detect_uplink(full_topic)
   local last_part = string.sub(full_topic, full_topic:match'^.*()/')
   if last_part == '/uplink' then
@@ -114,33 +119,28 @@ function cloud2murano.callback(cloud_data_array, options)
     local data = from_json(cloud_data.payload)
     local final_state = {}
     if cloud2murano.detect_uplink(cloud_data.topic) then
-      if data.identity then
-        final_state.identity = data.identity
-        -- Transform will parse data, depending channel value -got from port-
-        -- Decoding logic can handle several channel linked with same port, just configure it in transform.uplink_decoding 
-        final_state = transform.data_in(data)
-        if final_state.data_in == nil then
-          log.warn('Cannot find transform module, should uncomment module')
-        end
-        cloud2murano.print_uplink(final_state.identity)
-      
-        -- Supported types by this example are the above 'provisioned' & 'deleted' functions
-        local handler = cloud2murano[final_state.type] or cloud2murano.data_in
-        -- Assumes incoming data by default
-        if final_state[1] == nil then
-          -- Handle single device update
-          result_tot[k] = handler(final_state.identity, final_state, options)
-        else
-          -- Handle batch update
-          local results = {}
-          for i, data in ipairs(final_state) do
-            results[i] = handler(data.identity, data, options)
-          end
-          result_tot[k] = results
-        end
+      data.identity = data.identity or cloud2murano.getIdentityTopic(cloud_data.topic)
+      -- Transform will parse data, depending channel value -got from port-
+      -- Decoding logic can handle several channel linked with same port, just configure it in transform.uplink_decoding 
+      final_state = transform.data_in(data)
+      if final_state.data_in == nil then
+        log.warn('Cannot find transform module, should uncomment module')
+      end
+      cloud2murano.print_uplink(final_state.identity)
+    
+      -- Supported types by this example are the above 'provisioned' & 'deleted' functions
+      local handler = cloud2murano[final_state.type] or cloud2murano.data_in
+      -- Assumes incoming data by default
+      if final_state[1] == nil then
+        -- Handle single device update
+        result_tot[k] = handler(final_state.identity, final_state, options)
       else
-        log.warn("Cannot find identity in callback payload..", to_json(data))
-        result_tot[k] = {error = "Cannot find identity in callback payload.."}
+        -- Handle batch update
+        local results = {}
+        for i, data in ipairs(final_state) do
+          results[i] = handler(data.identity, data, options)
+        end
+        result_tot[k] = results
       end
     else
       cloud2murano.print_downlink(data.identity)

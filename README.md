@@ -55,17 +55,24 @@ By using this template, start filling some AWS credentials and certificate value
   1. Still on `Secure` -> `Certificates`, click on *option button* on your new certificate, and `Attach policy`. Attach the policy created.
   Choose also `Attach thing`. Attach things needed to communicate with MQTT.
 
-  1. Provide also a Topic address, to subscribe to AWS IoT devices with this pattern :
-  cmd/<*application*>/<*context*>/<*device-id*>/<*res-type*> 
-  At any moment, it is possible to subscribe to all child nodes topics with : `#`
-  Full details are on [this documentation](https://d1.awsstatic.com/whitepapers/Designing_MQTT_Topics_for_AWS_IoT_Core.pdf), page 13.
 
 **Important** : 
-  1. Make sure you add a second address dedicated for downlink messages publishing to AWS IoT. It means AWS IoT must subscribe to this topic too.
-  2. Other adress dedicated for downlink must finish with : `uplink`
+  When you save your config settings, two topics will be generated from scratch.
+  ```
+  /devices/+/uplink
+  /devices/+/downlink
+  ```
+  But you can change them to 
+  ```
+  /*any*/*path*/*here*/+/uplink
+  /*any*/*path*/*here*/+/downlink
+  ``` 
+"+" is a wildcard enabling to fetch all topics from this node, so that all event can be triggered. Murano expect this field *+* will always represent *identity* field. You have to be sure on devices side, pattern for *publihsing* and also *subscribing* are similar and contain each their *identity* field at this location). For some reason, if you cannot have the same mapping with topic pattern, you have to create a Rule to republish to desired topics to your device or murano (bi-directional). [See there: use republish part](https://docs.aws.amazon.com/iot/latest/developerguide/iot-rule-actions.html).
+
 
 Now, any incoming message will be sent and interpreted in `cloud2murano`. And `vendor/c2c/transform` has a role of parser module, and can transform data, to be used in exosense.
 When receiving messages, it will initially create devices, and then update with further incoming data. You can see available devices in the `Devices` tab from the App. incoming data is filled first in the `data_in` resource.
+
 
 
 **Synchronize with Exosense**

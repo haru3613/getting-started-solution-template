@@ -83,7 +83,8 @@ function getTopic(data)
   local topic = nil
   local retrieved_data = Config.getParameters({service = 'mqtt'})
   if retrieved_data.parameters.topics and #(retrieved_data.parameters.topics)>1 then
-    topic = retrieved_data.parameters.topics[2]
+    local temp = string.sub(retrieved_data.parameters.topics[2],0,retrieved_data.parameters.topics[2]:match'^.*()/'-1)
+    topic = string.sub(temp, 0,temp:match'^.*()/') .. data.identity .. "/downlink"
   else
     log.error("Didn't send any Downlink: no topic for downlink (2nd topic)")
   end
