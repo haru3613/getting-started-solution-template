@@ -9,7 +9,9 @@
 
 -- TODO add size limitations/lru/background deletion options
 local device2 = murano.services.device2
-local lru = require("lib.lru")
+-- maximum size of LRU cache
+local size_lru = 25000
+local lru = require("lib.lru").new(size_lru)
 local cache = {}
 
 function parseKey(json_doc)
