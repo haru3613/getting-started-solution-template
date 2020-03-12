@@ -3,65 +3,14 @@
 
 -- ALL the cache is organized like this : 
 --to make sure there is primary keys only
--- Key = <id_device> + "0" = topic values from device identity
--- Key = <id_device> + <channel> + "1" = port values from device identity depending channel
--- Key = <id_device> + <port> + "2" = channel values from device identity depdending port
+-- Key = <id_device> + "top" = topic values from device identity
+-- Key = <id_device> + "ch" + <channel>  = port values from device identity depending channel
+-- Key = <id_device> + "por" + <port> = channel values from device identity depdending port
 
 -- TODO add size limitations/lru/background deletion options
 local device2 = murano.services.device2
+local lru = require("lib.lru")
 local cache = {}
-
-function cache.get(key, getter, timeout)
-  local now = os.time()
-  if not cache[key] or cache[key].ex < now then
-    local value
-    if getter then
-      value = getter(key)
-    else
-      value = Keystore.get({key = key})
-      if value and value.value then
-        value = value.value
-      end
-    end
-    if value == nil or value.error or (type(value) == "table" and #value <= 0) then
-      cache[key] = nil
-      return nil
-    end
-    cache[key] = {
-      ex = now + (timeout or 30), -- Expires
-      value = value
-    }
-  end
-  return cache[key].value
-end
-
-function cache.set(key, value, timeout, setter)
-  if cache[key] == value then
-    return
-  end
-
-  local result
-  if setter then
-    result = setter(key, value)
-  else
-    result =
-      Keystore.command(
-      {
-        key = key,
-        command = "set",
-        args = {value, "EX", (timeout or 30)}
-      }
-    )
-  end
-  if result and result.error then
-    return nil
-  end
-  cache[key] = {
-    ex = os.time() + 30, -- Expires
-    value = value
-  }
-  return value
-end
 
 function parseKey(json_doc)
   for key,value in pairs(from_json(json_doc)) do
@@ -76,9 +25,9 @@ function populateCacheChannelAndPort(my_config_io, identity, vm_cache_timeout)
     if prop.protocol_config and prop.protocol_config.app_specific_config and prop.protocol_config.app_specific_config.port then
       local port = tostring(prop.protocol_config.app_specific_config.port)
       if prop.properties.control then
-        cache.set(identity .. channel .. "1", port, vm_cache_timeout)
+        lru.set(identity .. "ch" .. channel, port, vm_cache_timeout)
       end
-      cache.set(identity .. port .. "2", channel, vm_cache_timeout)
+      lru.set(identity .. "por" .. port, channel, vm_cache_timeout)
     end
   end
 end
@@ -94,7 +43,7 @@ function fillCacheOneDevice(identity,lorawan_meta,config_io,vm_cache_timeout)
     end
   end
   if lorawan_meta and lorawan_meta.reported and from_json(lorawan_meta.reported) and from_json(lorawan_meta.reported).topic then
-    cache.set(identity .. "0", from_json(lorawan_meta.reported).topic, vm_cache_timeout)
+    lru.set(identity .. "top", from_json(lorawan_meta.reported).topic, vm_cache_timeout)
   end
 end
 
@@ -139,7 +88,7 @@ function cache.getChannelUseCache(data_device_type_uplink)
   local channel
   if data_device_type_uplink.mod and data_device_type_uplink.mod.port then
     local identity = data_device_type_uplink.mod.devEUI
-    channel = cache.get(identity .. tostring(data_device_type_uplink.mod.port) .. "2")
+    channel = lru.get(identity .. "por" .. tostring(data_device_type_uplink.mod.port))
   end
   return channel
 end
@@ -152,15 +101,15 @@ function cache.getTopicPortUseCache(data_device_downlink)
     singledevice = true,
     identity = data_device_downlink.identity
   }
-  local topic = cache.get(data_device_downlink.identity .. "0")
+  local topic = lru.get(data_device_downlink.identity .. "top")
   local channel = parseKey(data_device_downlink.data_out)
-  local port = cache.get(data_device_downlink.identity .. channel .. "1")
+  local port = lru.get(data_device_downlink.identity .. "ch" .. channel)
   if channel ~= nil then
     if topic == nil or port == nil then
       --regenerate cache, not call each time
       cache.cacheFactory(options)
-      topic = cache.get(data_device_downlink.identity .. "0")
-      port = cache.get(data_device_downlink.identity .. channel .. "1")
+      topic = lru.get(data_device_downlink.identity .. "top")
+      port = lru.get(data_device_downlink.identity .. "ch" .. channel)
     end
   end
   return topic, port
