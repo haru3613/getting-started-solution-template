@@ -113,8 +113,8 @@ function cloud2murano.detect_uplink(string_topic)
   return false
 end
 function cloud2murano.print_downlink(elem)
-  if elem ~= nil then
-    print("data_in not updated from: " .. elem .. ". Not an uplink")
+  if elem.mod and elem.mod.devEUI then
+    print("data_in not updated from: " .. elem.mod.devEUI .. ". Not an uplink")
   else
     print("data_in not updated. Not an uplink")
   end
@@ -175,7 +175,7 @@ function cloud2murano.callback(cloud_data_array,options)
       end
     else
       print("receive part: " .. cloud_data.topic .. " " .. cloud_data.payload)
-      cloud2murano.print_downlink(data.mod.devEUI)
+      cloud2murano.print_downlink(data)
       result_tot[k] = {message = "Is a Downlink"}
     end
   end
