@@ -185,7 +185,7 @@ function cloud2murano.callback(cloud_data_array,options)
     local options = {
       regex = regex
     }
-    c.cacheFactory(regex)
+    c.cacheFactory(options)
   end
   -- Third time can decode uplink after updating the cache
   for k, data in pairs(device_to_upd) do
