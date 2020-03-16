@@ -32,9 +32,9 @@ This template disables auto-Deployment by default. However for each integration 
 
 This solution enables MQTT Client protocol through a service: _Mqtt_. 
 
-  1. By using this template, in `services` -> `Mqtt`, all credentials from SenseWay must be provided to establish a securised MQTT Client connection, with _user & password_. Refer to [this page](https://www.senseway.net/service/network-service/network-manual/lorawan-mqtt-connection-manual/) for more details.
+  1. By using this template, in `services` -> `Mqtt`, all credentials from SenseWay must be provided to establish a securised MQTT Client connection, with _user & password_. Please make sure **port** value is 8883. Refer to [this page](https://www.senseway.net/service/network-service/network-manual/lorawan-mqtt-connection-manual/) for more details.
 
-  1. Topic address will be generated automatically, when you save your service config. Make sure you have entered an username.Good to know, subscribe to your Senseway devices fits this pattern : 
+  1. Topic address will be generated automatically, when you save your service config. Make sure you have entered an username. Good to know, subscribe to your Senseway devices fits this pattern : 
   lora/<*username*>/<*id_of_device*>/rx for uplink information.
   lora/<*username*>/<*id_of_device*>/tx for downlink information.
   It is possible to subscribe to all child node topics with : `#`, or all actual node topics with : `+`
@@ -108,10 +108,10 @@ On this diagram, whole flow is detailed :
 
 **Post Scriptum**
 
-This template will mock acknowledgment event when changing *data out* in exosense (see on previous diagram). This is a simple postulat: by changing one value in Exosense (to create a downline message to device) the platform will rely on a quick acknowledgment. But LoraWan protocol has an other priority for this. Basically, device will get downlink message fastly, but acknowledgment is queued uppon next uplinks generation, which can take up long time.
+This template will mock acknowledgment event when changing *data out* in exosense (see on previous diagram). In fact, by changing one value in Exosense (to create a downline message to device) the platform will rely on a quick acknowledgment from device. But on its side, LoraWan protocol has an other priority for this. Basically, device will get downlink message quickly, but acknowledgment is queued upon next uplinks generation, which can take up long time.
 
-This template uses cache for store values (ex. channel associated with your port device). So that access devices information can be bypass. Please keep in mind the actual valid time in cache is set to 5 minutes. You can go under `Settings` and choose `ENV VARIABLES`. Define time in sec when cache is valid : add One variable with followings settings :
-**Key** = VMCACHE_TIMEOUT
+This template uses cache for store values (ex. channel associated with your port device). Inside this cache strategy, it relies with Keystore access with cache validity. So that it prevent to call too many times a state of device in murano, that can be expensive and impact performance. Please keep in mind the actual valid time cached in Keystore is set to 5 minutes. On your Murano app, you can go under `Settings` and choose `ENV VARIABLES`. Define time in sec when cache is valid : add One variable with followings settings :
+**Key** = KEYSTORE_TIMEOUT
 **Value** = *<Your timeout in sec. ex: 300>*
 
 ---

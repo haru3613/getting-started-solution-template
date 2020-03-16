@@ -11,7 +11,10 @@
 local device2 = murano.services.device2
 -- maximum size of LRU cache
 local size_lru = 25000
-local lru = require("lib.lru").new(size_lru)
+local use_keystore = true
+-- time out for cache
+local timeout = 30
+local lru = require("lib.lru").new(size_lru, timeout, use_keystore)
 local cache = {}
 
 function parseKey(json_doc)
@@ -21,38 +24,38 @@ function parseKey(json_doc)
   return nil
 end
 
-function populateCacheChannelAndPort(my_config_io, identity, vm_cache_timeout)
+function populateCacheChannelAndPort(my_config_io, identity, keyst_cache_timeout)
   -- can be either exosense set config io or basic vendor.configIO file here, in a table format
   for channel, prop in pairs(my_config_io.channels) do
     if prop.protocol_config and prop.protocol_config.app_specific_config and prop.protocol_config.app_specific_config.port then
       local port = tostring(prop.protocol_config.app_specific_config.port)
       if prop.properties.control then
-        lru.set(identity .. "ch" .. channel, port, vm_cache_timeout)
+        lru.set(identity .. "ch" .. channel, port, keyst_cache_timeout)
       end
-      lru.set(identity .. "por" .. port, channel, vm_cache_timeout)
+      lru.set(identity .. "por" .. port, channel, keyst_cache_timeout)
     end
   end
 end
 
-function fillCacheOneDevice(identity,lorawan_meta,config_io,vm_cache_timeout)
+function fillCacheOneDevice(identity,lorawan_meta,config_io,keyst_cache_timeout)
   if config_io and config_io.reported and config_io.reported:sub(1, 2) ~= "<<" then
-    populateCacheChannelAndPort(from_json(config_io.reported),identity, vm_cache_timeout)
+    populateCacheChannelAndPort(from_json(config_io.reported),identity, keyst_cache_timeout)
   else
     -- look for original file in ConfigIO.lua, but value can be wrong
     config_io = require("vendor.configIO")
     if config_io and config_io.config_io and from_json(config_io.config_io) then
-      populateCacheChannelAndPort(from_json(config_io.config_io),identity, vm_cache_timeout)
+      populateCacheChannelAndPort(from_json(config_io.config_io),identity, keyst_cache_timeout)
     end
   end
   if lorawan_meta and lorawan_meta.reported and from_json(lorawan_meta.reported) and from_json(lorawan_meta.reported).topic then
-    lru.set(identity .. "top", from_json(lorawan_meta.reported).topic, vm_cache_timeout)
+    lru.set(identity .. "top", from_json(lorawan_meta.reported).topic, keyst_cache_timeout)
   end
 end
 
 function cache.cacheFactory(options)
   -- will call for all device: fillCacheOneDevice
   print("Regenerating cache ...")
-  vm_cache_timeout = os.getenv("VMCACHE_TIMEOUT") or 300
+  local keyst_cache_timeout = os.getenv("KEYSTORE_TIMEOUT") or 300
   if options == nil then
     options = {}
   end
@@ -61,7 +64,7 @@ function cache.cacheFactory(options)
     local reported = device2.getIdentityState({identity = options.identity})
     local lorawan_meta = reported.lorawan_meta
     local config_io = reported.config_io
-    fillCacheOneDevice(options.identity,lorawan_meta,config_io,vm_cache_timeout)
+    fillCacheOneDevice(options.identity, lorawan_meta, config_io, keyst_cache_timeout)
   else
     local query = {
       -- if regex nil value, no filter ! 
@@ -76,7 +79,7 @@ function cache.cacheFactory(options)
         local config_io = v.state.config_io
         -- should be defined after first uplink
         local lorawan_meta = v.state.lorawan_meta
-        fillCacheOneDevice(identity,lorawan_meta,config_io,vm_cache_timeout)
+        fillCacheOneDevice(identity, lorawan_meta, config_io, keyst_cache_timeout)
       end
     end
   end
@@ -84,13 +87,18 @@ end
 
 -- overload vmcache for MQTT senseway
 function cache.getChannelUseCache(data_device_type_uplink)
-  -- return : channel taken from cache
+  -- return : channel taken from cache, and a message if any error . 
   -- depends port value
   -- give an option if you want to update cache
   local channel
   if data_device_type_uplink.mod and data_device_type_uplink.mod.port then
     local identity = data_device_type_uplink.mod.devEUI
     channel = lru.get(identity .. "por" .. tostring(data_device_type_uplink.mod.port))
+    local top = lru.get(identity.."top")
+    -- this device has no entry in the cache, as no channel and no topic
+    if not top then
+      return channel, "no_topic"
+    end
   end
   return channel
 end

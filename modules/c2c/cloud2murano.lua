@@ -160,14 +160,19 @@ function cloud2murano.callback(cloud_data_array,options)
         -- Transform will parse data, depending channel value -got from port-
         -- Decoding logic can handle several channel linked with same port, just configure it in transform.uplink_decoding 
         data.topic = cloud_data.topic
-        data.channel = c.getChannelUseCache(data)
+        data.channel, data.channel_error = c.getChannelUseCache(data)
         if data.channel ~= nil then
           print("receive part: " .. cloud_data.topic .. " " .. cloud_data.payload)
           result_tot[k] = cloud2murano.validateUplinkDevice(data)
         else
-          -- keep all data, and it is already a lua table
-          table.insert(device_to_upd, data)
-          result_tot[k] = {message = "For this uplink : Not found matching channel with topic or get from cache"}
+          -- no channel means no cache mapping with port key. If no topic also found for this identity, means cache must be regenerated.
+          if data.channel_error == "no_topic" then
+            table.insert(device_to_upd, data)
+            result_tot[k] = {message = "For this uplink : no cache exists"}
+          else
+            log.warn("Cannot find channels configured for this port of this device in configIO")
+            result_tot[k] = {message = "For this uplink : Not found matching channel with port in cache"}
+          end
         end
       else
         log.warn("Cannot find identity in uplink payload..", to_json(data))
