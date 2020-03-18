@@ -10,12 +10,13 @@ function lru_cache.new(size, time_valid_ttl, use_keystore, getter)
   -- info : TTL = time to leave
   -- local table for constructor
   local lru_instance = {}
-  if not size or not time_valid_ttl then
+  if not size or not time_valid_ttl or time_valid_ttl == 0 then
+    -- ony get and set arguments handle unlimited valid time (not constructor). See : optional_TTL
     return {error = "no size or TTL configured.."}
   end
-  -- size 
+  -- size, needed
   lru_instance.__max_size = size
-  -- time cache is valid
+  -- time cache is valid, needed
   lru_instance.__valid_time = time_valid_ttl
   -- use of keystore
   lru_instance.__use_of_keystore = use_keystore or false
@@ -67,7 +68,7 @@ function lru_cache.new(size, time_valid_ttl, use_keystore, getter)
 
   function lru_instance.setInKeystore(key, value, optional_TTL)
     --can set a new value, depending some parameters
-    if p == 0 then
+    if optional_TTL == 0 then
       Keystore.command(
         {
           key = key,
@@ -118,7 +119,8 @@ function lru_cache.new(size, time_valid_ttl, use_keystore, getter)
   function lru_instance.get(key, optional_TTL)
     -- ttl = time to leave, if value not in lua cache ( or expired) but in other cache (Keystore, getter), will set value with this optional_TTL timeout
     local now = os.time()
-    if not lru_instance.__storage[key] or (lru_instance.__storage[key].ex < now and lru_instance.__storage[key].ex > 0) then
+    local luacache_value = lru_instance.__storage[key]
+    if not luacache_value or (luacache_value.ex < now and luacache_value.ex > 0) then
       local value = nil
       if lru_instance.__use_of_keystore then
         value = Keystore.get({key = key})
@@ -130,13 +132,13 @@ function lru_cache.new(size, time_valid_ttl, use_keystore, getter)
         if lru_instance.__getter then
           value = lru_instance.__getter(key, optional_TTL)
         end
-      end
-      if value == nil or value.error or (type(value) == "table" and #value <= 0) then
-        return nil
-      end
-      if lru_instance.__getter and lru_instance.__use_of_keystore then
+        if value == nil or value.error or (type(value) == "table" and #value <= 0) then
+          return nil
+        end
+        if lru_instance.__getter and lru_instance.__use_of_keystore then
         -- means getter got value, so will update keystore
-        lru_instance.setInKeystore(key, value, optional_TTL)
+          lru_instance.setInKeystore(key, value, optional_TTL)
+        end
       end
       lru_instance.generateLRU(key, value, optional_TTL)
     end
