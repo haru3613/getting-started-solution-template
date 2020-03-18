@@ -32,7 +32,7 @@ This template disables auto-Deployment by default. However for each integration 
 
 This solution enables MQTT Client protocol through a service: _Mqtt_. 
 
-  1. By using this template, in `services` -> `Mqtt`, all credentials from SenseWay must be provided to establish a securised MQTT Client connection, with _user & password_. Please make sure **port** value is 8883. Refer to [this page](https://www.senseway.net/service/network-service/network-manual/lorawan-mqtt-connection-manual/) for more details.
+  1. By using this template, in `services` -> `Mqtt`, all credentials from SenseWay must be provided to establish a secured MQTT Client connection, with _user & password_. Please make sure **port** value is 8883. Refer to [this page](https://www.senseway.net/service/network-service/network-manual/lorawan-mqtt-connection-manual/) for more details.
 
   1. Topic address will be generated automatically, when you save your service config. Make sure you have entered an username. Good to know, subscribe to your Senseway devices fits this pattern : 
   lora/<*username*>/<*id_of_device*>/rx for uplink information.
@@ -45,8 +45,8 @@ Now, any incoming message will be sent and interpreted in `cloud2murano`. And `v
 **Synchronize with Exosense**
 
 If you want to start to make operations with exosense, you should start parsing your data (which is a hex in `mod.data` of your message structure). 
-  1. change *uplink_by_ports* logic from `vendor/c2c/transform`, adapt your logic depending port values, and how you want to parse your data.
-  1. Configure also `vendore/configIO`. You need to create generic *channels* required by Exosense. It is just a global and generalized file and in further (Exosense) you should be able to customize it for each device.
+  1. Configure `vendore/configIO`. You need to create generic *channels* required by Exosense, to map with port values from your device uplinks. It is just a global and generalized file and further (Exosense) you should be able to customize it for each device.
+  1. De-comment all from `vendor/c2c/transform`. Change *uplink_decoding* to adapt your logic depending channels values, and how you want to parse your data.
 
 Now you should have a **data_in** resource filled, that will enable you to receive data in Exosense.
 
@@ -108,9 +108,9 @@ On this diagram, whole flow is detailed :
 
 **Post Scriptum**
 
-This template will mock acknowledgment event when changing *data out* in exosense (see on previous diagram). In fact, by changing one value in Exosense (to create a downline message to device) the platform will rely on a quick acknowledgment from device. But on its side, LoraWan protocol has an other priority for this. Basically, device will get downlink message quickly, but acknowledgment is queued upon next uplinks generation, which can take up long time.
+This template will mock acknowledgment event when changing *data out* in exosense (see on previous diagram). In fact, by changing one value in Exosense (to create a downlink message to device) the platform will rely on a quick acknowledgment from device. But on its side, LoraWan protocol has an other priority for this. Basically, device will get downlink message quickly, but acknowledgment is queued upon next uplinks generation, which can take up long time.
 
-This template uses cache for store values (ex. channel associated with your port device). Inside this cache strategy, it relies with Keystore access with cache validity. So that it prevent to call too many times a state of device in murano, that can be expensive and impact performance. Please keep in mind the actual valid time cached in Keystore is set to 5 minutes. On your Murano app, you can go under `Settings` and choose `ENV VARIABLES`. Define time in sec when cache is valid : add One variable with followings settings :
+This template uses cache for store values (ex. channel associated with your port device). Inside this cache strategy, it relies with Keystore access with cache validity. So that it prevent to call too many times a state of device in murano, that can be expensive and impact performances. Please keep in mind the actual valid time cached in Keystore is set to 5 minutes. On your Murano app, you can go under `Settings` and choose `ENV VARIABLES`. Define time in sec when cache is valid : add One variable with followings settings :
 **Key** = KEYSTORE_TIMEOUT
 **Value** = *<Your timeout in sec. ex: 300>*
 

@@ -23,7 +23,7 @@ local transform = {}
 --   -- keys MUST match the channels name defined in the module `vendor.configIO` 
 --   ["temperature"] = decode_temp_status,
 --   ["machine_status"] = decode_temp_status
---   -- Other Cases for other ports must be implemented here
+--   -- Other Cases for other channels must be implemented here
 -- }
 
 -- -- Here downling channels will be transformed to expected Hex value
