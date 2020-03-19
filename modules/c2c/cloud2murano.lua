@@ -104,22 +104,36 @@ function cloud2murano.findRegexFromDevicesList(cloud_data_array)
   my_dev_id = my_dev_id .. ")$"
   return my_dev_id
 end
+function cloud2murano.setAckResource(data)
+  local final_state = {}
+  final_state.identity = data.devEUI
+  final_state.ack_meta = to_json(data)
+  -- Assumes incoming data by default
+  return cloud2murano.data_in(final_state.identity, final_state, options)
+end
+function cloud2murano.detectAck(string_topic)
+  local topic = string.sub(string_topic, string_topic:match'^.*()/')
+  if topic == '/ack' then
+    return true
+  end
+  return false
+end
 
-function cloud2murano.detect_uplink(string_topic)
+function cloud2murano.detectUplink(string_topic)
   local topic = string.sub(string_topic, string_topic:match'^.*()/')
   if topic == '/rx' then
     return true
   end
   return false
 end
-function cloud2murano.print_downlink(elem)
+function cloud2murano.printDownlink(elem)
   if elem.mod and elem.mod.devEUI then
     print("data_in not updated from: " .. elem.mod.devEUI .. ". Not an uplink")
   else
     print("data_in not updated. Not an uplink")
   end
 end
-function cloud2murano.print_uplink(elem)
+function cloud2murano.printUplink(elem)
   print(elem .. " : data updated.")
 end
 
@@ -134,7 +148,8 @@ function cloud2murano.validateUplinkDevice(uplink_data)
   final_state.lorawan_meta = uplink_data
   -- remove part channel here, no needed anymore
   final_state.lorawan_meta.channel = nil
-  cloud2murano.print_uplink(final_state.identity)
+  final_state.lorawan_meta.channel_error = nil
+  cloud2murano.printUplink(final_state.identity)
 
   -- Supported types by this example are the above 'provisioned' & 'deleted' functions
   local handler = cloud2murano[final_state.type] or cloud2murano.data_in
@@ -155,7 +170,7 @@ function cloud2murano.callback(cloud_data_array,options)
   -- First loop : first time for all type of data. ... For those uplink and during decoding part, if no channel linked with port, report these devices in a third time job for decoding, just after update cache.
   for k, cloud_data in pairs(cloud_data_array) do
     local data = from_json(cloud_data.payload)
-    if cloud2murano.detect_uplink(cloud_data.topic) then
+    if cloud2murano.detectUplink(cloud_data.topic) then
       if data.mod.devEUI then
         -- Transform will parse data, depending channel value -got from port-
         -- Decoding logic can handle several channel linked with same port, just configure it in transform.uplink_decoding 
@@ -180,7 +195,11 @@ function cloud2murano.callback(cloud_data_array,options)
       end
     else
       print("receive part: " .. cloud_data.topic .. " " .. cloud_data.payload)
-      cloud2murano.print_downlink(data)
+      cloud2murano.printDownlink(data)
+      if cloud2murano.detectAck(cloud_data.topic) then
+        -- because a acknowledgment is caught, store it in ack_meta resource
+        cloud2murano.setAckResource(data)
+      end
       result_tot[k] = {message = "Is a Downlink"}
     end
   end

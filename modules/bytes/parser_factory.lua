@@ -1,5 +1,5 @@
---Help Sigfox device.uplink() message to be parsed in Murano,
---see also https://docs-staging.exosite.com/development/services/sigfox/decoding-grammar/
+--Help Senseway uplink_decoding in tranform, who takes raw hex data and parsed it for Murano, and also downlink_encoding
+--see also https://docs.exosite.com/development/services/sigfox/decoding-grammar/
 local parser_factory = {}
 
 function parser_factory.getbool(bytes, start, offset)

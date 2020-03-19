@@ -9,6 +9,7 @@ See related documentation on http://docs.exosite.com/connectivity/cloud2cloud/
 
 - [Using this project](#using-this-project)
 - [Start synchronizing devices with MQTT](#start-synchronizing-devices-with-mqtt-client)
+- [Questions / Answers](#questions-answers)
 - [Types of Integration](#types-of-integration)
 - [Customization](#customization)
   - [IoT-Connector integration](#iot-connector-integration)
@@ -108,11 +109,26 @@ On this diagram, whole flow is detailed :
 
 **Post Scriptum**
 
-This template will mock acknowledgment event when changing *data out* in exosense (see on previous diagram). In fact, by changing one value in Exosense (to create a downlink message to device) the platform will rely on a quick acknowledgment from device. But on its side, LoraWan protocol has an other priority for this. Basically, device will get downlink message quickly, but acknowledgment is queued upon next uplinks generation, which can take up long time.
+This template will mock acknowledgment event when changing *data out* in exosense (see on previous diagram). In fact, by changing one value in Exosense (to create a downlink message to device) the platform will rely on a quick acknowledgment from device. But on its side, LoraWan protocol has an other priority for this. Basically, device will get downlink message quickly, but acknowledgment is queued upon next uplinks generation, which can take up long time. You can still have access to acknowledgment message as it is stored in `ack_meta` resource of your device.
 
 This template uses cache for store values (ex. channel associated with your port device). Inside this cache strategy, it relies with Keystore access with cache validity. So that it prevent to call too many times a state of device in murano, that can be expensive and impact performances. Please keep in mind the actual valid time cached in Keystore is set to 5 minutes. On your Murano app, you can go under `Settings` and choose `ENV VARIABLES`. Define time in sec when cache is valid : add One variable with followings settings :
 **Key** = KEYSTORE_TIMEOUT
 **Value** = *<Your timeout in sec. ex: 300>*
+
+---
+
+## Questions Answers
+
+*How I can write lua code to decode or encode inside transform module ?*
+**Transform** module from *vendor* folder is safe and persistent, you should add you decoding and encoding logic inside. Add your logic given channels name, in `downlink_encoding` or `uplink_decoding`. It will rely on some functions that parse bytes. A library is provided in `bytes/parser_factory` for general cases like decode *floats*, *char*. Or encode *boolean* in hex value.
+
+*What are resources filled on my devices, is there a description ?*
+A description of device resource can be explained here: 
+  - **data_in** : A decoded message from data, that is ready to be user by exosense.
+  - **data_out** : A message from Exosense, that is send to device, after encoding values.
+  - **config_io** : Meta data describing relevant device data capabilities, like port used and channel name it has. It is used by Exosense too. If uses device control, will necessarily means enable *control* boolean.
+  - **lorawan_meta** : All raw information got on the last uplink (*rx*).
+  - **ack_meta** : All raw information got on the last device acknowledgment topic (*ack*). After you send a downlink requiring acknowledgment.
 
 ---
 
