@@ -182,14 +182,14 @@ function cloud2murano.callback(cloud_data_array, options)
       data.identity = data.identity or cloud2murano.getIdentityTopic(cloud_data.topic)
       data.topic = cloud_data.topic
       --if you don't specify port, use operation mapping port 1.
-      local port = 1 or data.port
+      local port = data.port or 1
       data.port = port
       data.channel= c.getChannelUseCache(data)
       if data.channel ~= nil then
         print("Receive part: " .. cloud_data.topic .. " " .. cloud_data.payload)
         result_tot[k] = cloud2murano.validateUplinkDevice(data)
       else
-        table.insert(device_to_upd)
+        table.insert(device_to_upd, data)
       end
     else
       print("Receive part (downlink): " .. cloud_data.topic .. " " .. cloud_data.payload)
@@ -212,7 +212,7 @@ function cloud2murano.callback(cloud_data_array, options)
   for k, data in pairs(device_to_upd) do
     data.channel = c.getChannelUseCache(data)
     if data.channel == nil then
-      log.warn("Cannot find channels configured for this port" .. tostring(data.port))
+      log.warn("Cannot find channels configured for this port: " .. tostring(data.port))
     end
     print("Receive after re-generate cache from device: " ..  data.identity)
     cloud2murano.validateUplinkDevice(data)
