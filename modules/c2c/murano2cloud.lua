@@ -43,7 +43,7 @@ function murano2cloud.getTopic(identity)
   local topic = nil
   local mqtt_service = Config.getParameters({service = "mqtt"}).parameters
   if mqtt_service.topics and #(mqtt_service.topics)>1 then
-    local address = mqtt_service.topic[2]
+    local address = mqtt_service.topics[2]
     local prefix = extractPrefix(address)
     local suffix =  string.sub(address,address:match'^.*()/')
     -- concat : base of generic downlink adress , replace "+" with device identity

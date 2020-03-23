@@ -30,7 +30,7 @@ This template disables auto-Deployment by default. However for each integration 
 ## Start synchronizing devices with AWS IoT
 
 This solution enables MQTT protocol through a service : _Mqtt_. 
-Set up is important and all steps must be followed carefully. Initially, user should have an AWS account with access on IoT-Core, and should open *AWS IoT dashboard page*. Let's start !
+Set up is important and all steps must be followed carefully. Initially, user should have an AWS account with access on IoT-Core, and should open *AWS IoT dashboard page*. Read then carefully paragraph "important". Let's start !
 By using this template, start filling some AWS credentials and certificate values. In `service`-> `Mqtt`, which contains blank fields initially. It is explained here :
 
  ![AWS IoT Tab location.png](readme_resources/tabAWS.png)
@@ -57,15 +57,18 @@ By using this template, start filling some AWS credentials and certificate value
 
 
 **Important** : 
-  When you save your config settings, two topics will be generated from scratch.
+  When you save your config settings, three topics will be generated from scratch.
   ```
   /devices/+/uplink
   /devices/+/downlink
+  /devices/+/ack
   ```
+ `ack` is a topic dedicated to acknowledgment of your device after a downlink has been received. 
   But you can change them to 
   ```
-  /*any*/*path*/*here*/+/uplink
-  /*any*/*path*/*here*/+/downlink
+  /*any*/*path*/*here*/+/*any_uplink_name*
+  /*any*/*path*/*here*/+/*any_downlink_name*
+    /*any*/*path*/*here*/+/*any_ack_name*
   ``` 
 "+" is a wildcard enabling to fetch all topics from this node, so that all event can be triggered. Murano expect this field *+* will always represent *identity* field. You have to be sure on devices side, pattern for *publihsing* and also *subscribing* are similar and contain each their *identity* field at this location). For some reason, if you cannot have the same mapping with topic pattern, you have to create a Rule to republish to desired topics to your device or murano (bi-directional). [See there: use republish part](https://docs.aws.amazon.com/iot/latest/developerguide/iot-rule-actions.html).
 

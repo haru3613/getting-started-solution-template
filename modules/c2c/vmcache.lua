@@ -99,8 +99,9 @@ function cache.getPortUseCache(data_device_downlink)
     identity = data_device_downlink.identity
   }
   local channel = parseKey(data_device_downlink.data_out)
+  local port = nil
   if channel ~= nil then
-    local port = lru.get(data_device_downlink.identity .. "ch" .. channel)
+    port = lru.get(data_device_downlink.identity .. "ch" .. channel)
     if port == nil then
       --regenerate cache, not call each time
       cache.cacheFactory(options)
