@@ -33,8 +33,27 @@ function dummyEventAcknowledgement(operation)
   end
 end
 
+function extractPrefix(address)
+  local temp = string.sub(address,0,address:match'^.*()/'-1)
+  return string.sub(temp,0,temp:match'^.*()/')
+end
+
+function murano2cloud.getTopic(identity)
+  --return : topic. They are taken from mqtt service parameters at second topic , can change
+  local topic = nil
+  local mqtt_service = Config.getParameters({service = "mqtt"}).parameters
+  if mqtt_service.topics and #(mqtt_service.topics)>1 then
+    local address = mqtt_service.topic[2]
+    local prefix = extractPrefix(address)
+    local suffix =  string.sub(address,address:match'^.*()/')
+    -- concat : base of generic downlink adress , replace "+" with device identity
+    topic = prefix .. identity .. suffix
+  end
+  return topic
+end
+
 -- function which is the real setIdentityState, dedicated for data_out 
-function murano2cloud.updateWithMqtt(data, topic)
+function murano2cloud.updateWithMqtt(data, topic, port)
   local table_result = transform.data_out and transform.data_out(from_json(data.data_out)) -- template user customized data transforms
   if table_result ~= nil then
     local data_downlink = {}
@@ -45,9 +64,10 @@ function murano2cloud.updateWithMqtt(data, topic)
     end
      -- As data is just the small message to send, need to get some meta data to publish to tx
     data_downlink = {
-      ["identity"] = data.identity,
+      ["cnf"] = table_result.cnf,
       -- Auto-generated
       ["ref"] = rand_bytes(12),
+      ["port"] = port,
       ["data"] = table_result.data
     }
     Mqtt.publish({messages={{topic = topic, message = data_downlink}}})
@@ -58,37 +78,6 @@ function murano2cloud.updateWithMqtt(data, topic)
     log.error("Didn't send any Downlink: no Transform configured.")
     return false
   end
-end
-
--- function getTopicUseCache(data)
---   --return : topic. They are taken from cache
---   --if any in cache will call mqtt service parameters and generate it from topic entries.
---   local topic = c.get(data.identity) 
---   if topic == nil then
---     --regenerate cache, took from mqtt services parameters
---     print("regenerating cache for topic")
---     local retrieved_data = Config.getParameters({service = 'mqtt'})
---     if retrieved_data.parameters.topics and #(retrieved_data.parameters.topics)>1 then
---       topic = c.set(data.identity,retrieved_data.parameters.topics[2],6*60*60)
---     else
---       log.error("Didn't send any Downlink: no topic for downlink (2nd topic)")
---     end
-
---   end
---   return topic
--- end
-
-function getTopic(data)
-  --return : topic. They are taken from mqtt service parameters at second topic , can change
-  local topic = nil
-  local retrieved_data = Config.getParameters({service = 'mqtt'})
-  if retrieved_data.parameters.topics and #(retrieved_data.parameters.topics)>1 then
-    local temp = string.sub(retrieved_data.parameters.topics[2],0,retrieved_data.parameters.topics[2]:match'^.*()/'-1)
-    topic = string.sub(temp, 0,temp:match'^.*()/') .. data.identity .. "/downlink"
-  else
-    log.error("Didn't send any Downlink: no topic for downlink (2nd topic)")
-  end
-  return topic
 end
 
 -- Below function uses the operations of device2, overload it.
@@ -102,11 +91,18 @@ function murano2cloud.setIdentityState(data)
       return device2.setIdentityState(data)
     end
     if data.data_out ~= nil then
-      --specific to value in data_out, a port is associated, details in config_io channels, on exosense
-      -- local old_topic = getTopicUseCache(data)
-      local topic = getTopic(data)
-      if topic ~= nil then
-        return murano2cloud.updateWithMqtt(data, topic)
+      -- inside will be : channel name, given as key to find corresp. port
+      local port_config_io = c.getPortUseCache(data)
+      if port_config_io == nil then
+        log.error("Didn't send any Downlink: no matching values for port from this channel " .. data.data_out)
+      else
+        --specific to value in data_out, a port is associated, details in config_io channels, on exosense
+        local topic = murano2cloud.getTopic(data.identity)
+        if topic ~= nil then
+          return murano2cloud.updateWithMqtt(data, topic, port)
+        else
+          log.error("Didn't send any Downlink: no topic found in Mqtt service parameters.")
+        end
       end
     end
   end

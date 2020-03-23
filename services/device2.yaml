@@ -23,3 +23,15 @@ resources:
     settable: true
     sync: false
     unit: ''
+  uplink_meta:
+    allowed: []
+    format: string
+    settable: true
+    sync: false
+    unit: ''
+  ack_meta:
+    allowed: []
+    format: string
+    settable: true
+    sync: false
+    unit: ''

@@ -6,6 +6,7 @@ local configIO = require("vendor.configIO")
 local transform = require("vendor.c2c.transform")
 local mcrypto = require("staging.mcrypto")
 local utils = require("c2c.utils")
+local c = require("c2c.vmcache")
 local device2 = murano.services.device2 -- to bypass the proxy (device2.lua)
 -- Beware of not creating recursive reference with murano2cloud
 
@@ -85,67 +86,136 @@ function cloud2murano.data_in(identity, data, options)
   return cloud2murano.trigger(identity, "data_in", payload, options)
 end
 
-function cloud2murano.getIdentityTopic(full_topic)
-  local temp = string.sub(full_topic,0,full_topic:match'^.*()/'-1)
+function cloud2murano.findRegexFromDevicesList(cloud_data_array)
+  -- regex to match all name of device from a batch event for ex. useful in vmcache
+  local my_dev_id = "^("
+  local last_device = ""
+  for k, tab_mess in pairs(cloud_data_array) do
+    if k == 1 then
+      my_dev_id = my_dev_id .. tab_mess.identity
+    else
+      -- make sure not to add same device in regex
+      if last_device ~= tab_mess.identity then
+        my_dev_id = my_dev_id .. "|" ..tab_mess.identity
+      end
+    end
+    last_device = tab_mess.identity
+  end
+  my_dev_id = my_dev_id .. ")$"
+  return my_dev_id
+end
+function cloud2murano.setAckResource(data)
+  -- because of acknowledgment, need to store in ack_meta resource from device.
+  local final_state = {}
+  final_state.identity = data.identity
+  final_state.ack_meta = to_json(data)
+  -- Assumes incoming data by default
+  return cloud2murano.data_in(final_state.identity, final_state, options)
+end
+
+function cloud2murano.getIdentityTopic(string_topic)
+  local temp = string.sub(string_topic,0,string_topic:match'^.*()/'-1)
   return string.sub(temp, temp:match'^.*()/'+1)
 end
 
-function cloud2murano.detect_uplink(full_topic)
-  local last_part = string.sub(full_topic, full_topic:match'^.*()/')
-  if last_part == '/uplink' then
+function cloud2murano.detectUplink(string_topic)
+  local last_part = string.sub(string_topic, string_topic:match'^.*()/')
+  local service_mqtt = Config.getParameters({service = "mqtt"}).parameters
+  local topic_suffix = '/uplink'
+  if service_mqtt.topics and #(service_mqtt.topics)>0 then
+    -- can be stored as topic parameters from mqtt service, in first element.
+    topic_suffix = string.sub(service_mqtt.topics[1], service_mqtt.topics[1]:match'^.*()/')
+  end
+  if last_part == topic_suffix then
+    return true
+  end
+  return false
+end
+function cloud2murano.detectAck(string_topic)
+  local last_part = string.sub(string_topic, string_topic:match'^.*()/')
+  local service_mqtt = Config.getParameters({service = "mqtt"}).parameters
+  local topic_suffix = '/ack'
+  if service_mqtt.topics and #(service_mqtt.topics)>2 then
+    -- can be stored as topic parameters from mqtt service, in first element.
+    topic_suffix = string.sub(service_mqtt.topics[3], service_mqtt.topics[3]:match'^.*()/')
+  end
+  if last_part == topic_suffix then
     return true
   end
   return false
 end
 
-function cloud2murano.print_downlink(elem)
-  if elem ~= nil then
-    print("data_in not updated from: " .. elem .. ". Not an uplink")
-  else
-    print("data_in not updated. Not an uplink")
-  end
-end
-function cloud2murano.print_uplink(elem)
+function cloud2murano.printUplink(elem)
   print(elem .. " : data_in updated.")
 end
+
+function cloud2murano.validateUplinkDevice(uplink_data)
+  local final_state = {}
+  final_state.identity = uplink_data.identity
+  final_state.data_in = transform.data_in and transform.data_in(uplink_data)
+  if final_state.data_in == nil then
+    log.warn('Cannot find transform module, should uncomment module')
+  end
+  -- Need to save some metadata
+  final_state.uplink_meta = uplink_data
+  -- remove part channel here, no needed anymore
+  final_state.uplink_meta.channel = nil
+  cloud2murano.printUplink(final_state.identity)
+  -- Supported types by this example are the above 'provisioned' & 'deleted' functions
+  local handler = cloud2murano[final_state.type] or cloud2murano.data_in
+  -- Assumes incoming data by default
+  return handler(final_state.identity, final_state, options)
+end
+
 -- Callback Handler
 -- Parse a data from 3rd part cloud into Murano event
 -- Support only batch event, see Mqtt batch.message object !
 function cloud2murano.callback(cloud_data_array, options)
   -- Handle batch update
   local result_tot = {}
+  -- dedicated for devices in uplink message that need to decode after regenerating their cache
+  local device_to_upd = {}
   for k, cloud_data in pairs(cloud_data_array) do
-    print("receive part: " .. cloud_data.topic .. " " .. cloud_data.payload)
     local data = from_json(cloud_data.payload)
     local final_state = {}
-    if cloud2murano.detect_uplink(cloud_data.topic) then
+    if cloud2murano.detectUplink(cloud_data.topic) then
       data.identity = data.identity or cloud2murano.getIdentityTopic(cloud_data.topic)
-      -- Transform will parse data, depending channel value -got from port-
-      -- Decoding logic can handle several channel linked with same port, just configure it in transform.uplink_decoding 
-      final_state = transform.data_in(data)
-      if final_state.data_in == nil then
-        log.warn('Cannot find transform module, should uncomment module')
-      end
-      cloud2murano.print_uplink(final_state.identity)
-    
-      -- Supported types by this example are the above 'provisioned' & 'deleted' functions
-      local handler = cloud2murano[final_state.type] or cloud2murano.data_in
-      -- Assumes incoming data by default
-      if final_state[1] == nil then
-        -- Handle single device update
-        result_tot[k] = handler(final_state.identity, final_state, options)
+      data.topic = cloud_data.topic
+      --if you don't specify port, use operation mapping port 1.
+      local port = 1 or data.port
+      data.port = port
+      data.channel= c.getChannelUseCache(data)
+      if data.channel ~= nil then
+        print("Receive part: " .. cloud_data.topic .. " " .. cloud_data.payload)
+        result_tot[k] = cloud2murano.validateUplinkDevice(data)
       else
-        -- Handle batch update
-        local results = {}
-        for i, data in ipairs(final_state) do
-          results[i] = handler(data.identity, data, options)
-        end
-        result_tot[k] = results
+        table.insert(device_to_upd)
       end
     else
-      cloud2murano.print_downlink(data.identity)
-      result_tot[k] = nil
+      print("Receive part (downlink): " .. cloud_data.topic .. " " .. cloud_data.payload)
+      -- should implement a way to detect ack messages, topic would map a third argument in topics from mqtt service parameters
+      if cloud2murano.detectAck(cloud_data.topic) then
+        -- because a acknowledgment is caught, store it in ack_meta resource
+        cloud2murano.setAckResource(data)
+      end
+      result_tot[k] = {message = "Is a Downlink"}
     end
+  end
+  if #device_to_upd > 0 then
+    local regex = cloud2murano.findRegexFromDevicesList(device_to_upd)
+    local options = {
+      regex = regex
+    }
+    c.cacheFactory(options)
+  end
+  -- Third time can decode uplink after updating the cache
+  for k, data in pairs(device_to_upd) do
+    data.channel = c.getChannelUseCache(data)
+    if data.channel == nil then
+      log.warn("Cannot find channels configured for this port" .. tostring(data.port))
+    end
+    print("Receive after re-generate cache from device: " ..  data.identity)
+    cloud2murano.validateUplinkDevice(data)
   end
   return result_tot
 end

@@ -1,5 +1,5 @@
 
-# Murano Cloud-Connector
+#  AWS IoT-Core Connector
 
 This project is a template of Murano IoT-Connector for AWS IoT integration.
 
