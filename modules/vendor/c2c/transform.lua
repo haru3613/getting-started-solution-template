@@ -41,9 +41,9 @@ local transform = {}
 -- }
 
 -- function transform.data_in(cloud_data)
---  -- Transform data from the 3rd party service to Murano
+--  -- Transform data from the 3rd party service to Murano, original data should be in data field
 --  if uplink_decoding[cloud_data.channel] ~= nil then
---    return uplink_decoding[cloud_data.channel](cloud_data.mod.data)
+--    return uplink_decoding[cloud_data.channel](cloud_data.data)
 --  else
 --    return '{}'
 --  end
