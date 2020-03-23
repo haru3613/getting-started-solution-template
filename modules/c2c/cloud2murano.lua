@@ -107,10 +107,13 @@ end
 function cloud2murano.setAckResource(data)
   -- because of acknowledgment, need to store in ack_meta resource from device.
   local final_state = {}
-  final_state.identity = data.identity
-  final_state.ack_meta = to_json(data)
-  -- Assumes incoming data by default
-  return cloud2murano.data_in(final_state.identity, final_state, options)
+  if data.identity then
+    final_state.identity = data.identity
+    final_state.ack_meta = to_json(data)
+    -- Assumes incoming data by default
+    return cloud2murano.data_in(final_state.identity, final_state, options)
+  end
+  return false
 end
 
 function cloud2murano.getIdentityTopic(string_topic)

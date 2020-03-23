@@ -99,7 +99,7 @@ function murano2cloud.setIdentityState(data)
         --specific to value in data_out, a port is associated, details in config_io channels, on exosense
         local topic = murano2cloud.getTopic(data.identity)
         if topic ~= nil then
-          return murano2cloud.updateWithMqtt(data, topic, port)
+          return murano2cloud.updateWithMqtt(data, topic, port_config_io)
         else
           log.error("Didn't send any Downlink: no topic found in Mqtt service parameters.")
         end
