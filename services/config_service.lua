@@ -10,6 +10,7 @@ if service.service == "mqtt" and service.action == "updated" then
     local topic_user = {}
     topic_user[1] = "devices/+/uplink"
     topic_user[2] = "devices/+/downlink"
+    topic_user[3] = "devices/+/ack"
     Config.setParameters({service = service.service, parameters = { topics = topic_user }})
   end
 end

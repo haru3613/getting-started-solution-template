@@ -1,4 +1,4 @@
---Help Sigfox device.uplink() message to be parsed in Murano,
+--Help Aws Iot uplink_decoding message in transform, who takes raw hex data and parsed it for Murano, and also downlink_encoding
 --see also https://docs-staging.exosite.com/development/services/sigfox/decoding-grammar/
 local parser_factory = {}
 

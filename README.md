@@ -63,14 +63,14 @@ By using this template, start filling some AWS credentials and certificate value
   /devices/+/downlink
   /devices/+/ack
   ```
- `ack` is a topic dedicated to acknowledgment of your device after a downlink has been received. 
+ `ack` is a topic dedicated to acknowledgment of your device (uplink) after a downlink has been received. 
   But you can change them to 
   ```
   /*any*/*path*/*here*/+/*any_uplink_name*
   /*any*/*path*/*here*/+/*any_downlink_name*
-    /*any*/*path*/*here*/+/*any_ack_name*
+  /*any*/*path*/*here*/+/*any_ack_name*
   ``` 
-"+" is a wildcard enabling to fetch all topics from this node, so that all event can be triggered. Murano expect this field *+* will always represent *identity* field. You have to be sure on devices side, pattern for *publihsing* and also *subscribing* are similar and contain each their *identity* field at this location). For some reason, if you cannot have the same mapping with topic pattern, you have to create a Rule to republish to desired topics to your device or murano (bi-directional). [See there: use republish part](https://docs.aws.amazon.com/iot/latest/developerguide/iot-rule-actions.html).
+"+" is a wildcard enabling to fetch all topics from this node, so that all event can be triggered. Murano expect this field *+* will always represent *identity* field. You have to be sure on devices side, pattern for *publihsing* and also *subscribing* are similar and contain each their *identity* field at this location. For some reason, if you cannot have the same mapping with topic pattern, you have to create a Rule to republish to desired topics to your device or murano (bi-directional). [See there: use republish part](https://docs.aws.amazon.com/iot/latest/developerguide/iot-rule-actions.html).
 
 
 Now, any incoming message will be sent and interpreted in `cloud2murano`. And `vendor/c2c/transform` has a role of parser module, and can transform data, to be used in exosense.
