@@ -32,7 +32,6 @@ local transform = {}
 --   ["button_push"] = function(new_machine_status) 
 --     return {
 --       -- to generate a acknowledgment message
---       ["cnf"] = false,
 --       ["data"] = parser_factory.sendbool(tostring(new_machine_status))
 --       -- port is set automatically from the configIO `protocol_config.app_specific_config.port` value
 --     }
