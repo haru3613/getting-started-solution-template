@@ -50,12 +50,13 @@ end
 
 -- function which is the real setIdentityState, dedicated for data_out 
 function murano2cloud.updateWithMqtt(data, topic, port)
+  data_out = from_json(data.data_out)
   -- this will be send to device through downlink topic
-  local data_downlink = nil
+  local data_downlink = {}
   data_downlink.identity = data.identity
   if port ~= nil then
     -- need to encode, using transform module
-    local table_result = transform.data_out and transform.data_out(from_json(data.data_out)) -- template user customized data transforms
+    local table_result = transform.data_out and transform.data_out(data_out) -- template user customized data transforms
     if table_result == nil then
       log.error("Didn't send any Downlink: no Transform configured.")
       return false
@@ -63,8 +64,8 @@ function murano2cloud.updateWithMqtt(data, topic, port)
     data_downlink.port = port
     data_downlink.data = table_result.data
   else
-    local channel = next(from_json(data.data_out))
-    data_downlink[channel] = from_json(data.data_out).channel
+    local channel = next(data_out)
+    data_downlink[channel] = data_out[channel]
   end
   local message, error = device2.setIdentityState(data)
   if error then

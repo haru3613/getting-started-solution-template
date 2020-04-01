@@ -83,16 +83,16 @@ For information, Exosense doc page [is here](https://docs.exosite.io/schema/chan
   1. In Exosense, make sure to confirm your devices and add them to your group. For this, on `Devices` tab on navigator, choose `Unused devices` and add **assign to a group** then, like on following screen:
     ![usedevice.png](readme_resources/usedevice.png)
   1. Now, on *Device* tab in navigator, select one device. Then in *Channels* menu choose your resource(s) to have control on it. You can set a specific setting for your channel.
-    ![Choose channel.png](readme_resources/choosechannel.png)
-    in `Advanced`, turn on `Control`.
-![Settings channels.png](readme_resources/settingschannels.png)
-    If your devices are communicating using encoded values and port, fill port value corresponding to your channel. Fill `app_specific_config` with :
+  ![Choose channel.png](readme_resources/choosechannel.png)
+  In `Advanced`, turn on `Control`.
+  ![Settings channels.png](readme_resources/settingschannels.png)
+  If your devices are communicating using encoded values and port, fill port value corresponding to your channel. Fill `app_specific_config` with :
       ```
       {
         "port": <port value>
       }
       ```
-  1. Note that you can also change the global ConfigIO file under `modules/vendor/configIO` if there is no specific case per device. Add a Downlink pattern on the same box (`app_specific_config`). As described in first paragraph, `+`sign in pattern will be replaced with *device identity* for mqtt downlink message. Topic must be then like:
+  1. Note that you can also change the global ConfigIO file under `modules/vendor/configIO` if there is no specific case per device. Add a Downlink pattern on the same box (`app_specific_config`). Downlink must contain a `+`sign in its pattern. By generating Mqtt downlink topic, it will be automatically replaced with *device identity*. Topic must be then like:
       ```
       {
         "downlink_topic": <downlink_topic_containing_+_or_directly_id_of_device_if filled_in_exosense>
@@ -125,7 +125,8 @@ Now, a new **config_io** resource contains channels, and some of them are design
 
 **Important** 
 
-  1. You need to know that **data_in** will be provisioned only after de-comment the `transform` module. Also, only after add **configIO** resource to your device (through Exosense), **data_out** can be provisioned, making possible downlink messages.
+  1. You need to know that **data_in** will be provisioned only after de-comment the `transform` module, or using device sending readable data, with explicit names. Also, only after add **configIO** resource to your device (through Exosense), **data_out** can be provisioned, making possible downlink messages.
+  1. For the first uplink got by a device, its topic is saved in device resource. An uplink topic for a same device cannot change in time. The first one will be set as reference only.
   1. File `ConfigIO` in `vendor` is not synchronized with Exosense, it must be just a generic pattern, that will be personalized in Exosense in a second time for each device.
 
 

@@ -45,8 +45,8 @@ local config_io = [[
       "protocol_config": {
         "app_specific_config": {
           "port": 5,
-          "downlink_topic": "id/+/sensors/downlink",
-          "ack_topic": "id/+/sensors/ack"
+          "downlink_topic": "things/+/sensors/downlink",
+          "ack_topic": "things/+/sensors/ack"
         }
       }
     }

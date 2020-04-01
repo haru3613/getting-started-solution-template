@@ -138,7 +138,7 @@ end
 
 function cloud2murano.HasDeviceTopicCache(identity)
   local topic = c.getTopicUseCache(identity)
-  return cache_extract
+  return topic
 end
 
 function cloud2murano.validateUplinkDevice(uplink_data, use_decode)
@@ -152,7 +152,7 @@ function cloud2murano.validateUplinkDevice(uplink_data, use_decode)
     end
   else
     local data_in = {}
-    for k,v in uplink_data do
+    for k,v in pairs(uplink_data) do
       if k ~= "identity" and k ~= "timestamp" and k ~= "topic" then
         data_in[k] = v
       end
