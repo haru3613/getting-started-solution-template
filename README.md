@@ -164,6 +164,9 @@ The `content_type` is optional and `application/json` is the default value.
 In addition to `--#ENDPOINT`, we enable you to define the following optional attributes:
 - `--#TAGS`, followed by a list of tags which are separated by space. eg: `--#TAGS public user`.
 - `--#SECURITY`, defines the authentication token needed for this endpoint, it could be `none`, `basic`, `bearer` or `apiKey`.
+- `--#RATELIMIT`, defines the requests per minute for this endpoint. eg: `--#RATELIMIT 1`.
+- `--#SUMMARY`, describes this endpoint. eg: `--#SUMMARY To get user name`.
+- `--#DESCRIPTION`, describes this endpoint in details. eg: `--#DESCRIPTION This api is used for users to get info`.
 
 **Example: [./endpoints/example.lua](./endpoints/example.lua)**
 
