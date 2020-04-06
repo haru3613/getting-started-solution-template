@@ -23,7 +23,7 @@ See related documentation on http://docs.exosite.com/connectivity/cloud2cloud/
 This cloud integration has its particularity and is not a generic plug&play solution.
 
 This project is build around uses 2 main modules [_c2c.cloud2murano_](./modules/c2c/cloud2murano.lua) to handle incoming data & [_c2c.murano2cloud_](./modules/c2c/murano2cloud.lua) for outgoing. Device state uses the [Device2 Service](http://docs.exosite.com/reference/services/device2) and [_vendor.c2c.transform_](./modules/vendor/c2c/transform.lua). Logic is to map incoming data and provision devices in Murano, with a transformation pipeline.
-This Template handle to kind of devices: those communicating with a *port* and *data* encoded, and those using *channel* with *ready to use values*. Remember that there is more configuration to do in first case, as must define a logic for decoding / encoding, not needed in second case.
+This Template handles two kind of devices: those using *channel* with *ready to use values*, and those communicating with a *port* and *data* encoded. Remember that there is more configuration to do in second case, as must define a logic for decoding / encoding, not needed in first case.
 
 **Deployment & Auto-update**:
 This template disables auto-Deployment by default. However for each integration we suggest enabling `auto_update` by default in the ./services/config.yaml file.
@@ -59,14 +59,10 @@ By using this template, start filling some AWS credentials and certificate value
 
 
 **Important** : 
-  Add also some topics on which to subscribe on.
-"+" is a wildcard enabling to replace any string in the level of path. It is useful to fetch several topics with just one level different in path, like id of device. You can add several "+" per field, except for the second field dedicated for *Downlink*.
-On second field (for *Downlink*) Murano expects to find only one "+", which should map with the identity of the device.
-Also try to not to have same end of path with *uplink* and *downlink* fields.
+Add also some topics on which to subscribe on.
+"+" is a wildcard enabling to replace any string in the level of path. It is useful to fetch several topics with just one level different in path, like *identity* of device. You can add several "+" per field.
 For some reason, if you want to redirect a bunch of topics to another one, you have to create a Rule to republish desired topics to your device or murano (bi-directional). [See there: use republish part](https://docs.aws.amazon.com/iot/latest/developerguide/iot-rule-actions.html).
-Not also `ack` is a topic dedicated to acknowledgment of your device (*uplink*) after a *downlink* has been received.
- 
-
+Not also `ack` is a topic dedicated to acknowledgment of your device (*uplink*) after a *downlink* has been received. 
 
 Now, any incoming message will be sent and interpreted in `cloud2murano`. And `vendor/c2c/transform` has a role of parser module, and can transform data, to be used in exosense (**except if your device send explicit and readable values**).
 When receiving messages, it will initially create devices, and then update with further incoming data. You can see available devices in the `Devices` tab from the App. incoming data is filled first in the `data_in` resource.
@@ -76,23 +72,24 @@ When receiving messages, it will initially create devices, and then update with 
 
 You can then, if needed, synchronize something to AWS IoT. Follow just these steps:
 
-In Exosense, any control over a resource (like a trigger On/Off Panel on dashboard on a device) will generate a new **data_out** resource on Murano side. Then message will be send to device through downlink. On your ConfigIO, there is a field for your controllable channels to define downlink topics. Please, note that you will need to fill the downlink address by replacing your `device id` with `+`, making a pattern definition. That will be automatically replaced when generating a mqtt downlink message for a specific id of device. 
+In Exosense, any control over a resource (like a trigger On/Off Panel on dashboard on a device) will generate a new **data_out** resource on Murano side. Then message will be send to device through downlink. On your ConfigIO, there is a field for your controllable channels to define downlink topics. Please, note that you will need to fill the downlink address by replacing your device `identity` with `+`, making a pattern definition. That will be automatically replaced when generating a mqtt downlink message for a specific identity of device. Click on this image (flow helper) for getting all information: 
+  ![flow_uplink_downlink.png](readme_resources/flow_uplink_downlink_AWS.png)
 Note also for some controllable channel, device is performing acknowledgment message. If needed, you should add these topic in Mqtt client service to subscribe to them.
-For information, Exosense doc page [is here](https://docs.exosite.io/schema/channel-signal_io_schema#device-control-interface-1). Follow instructions first: 
+Follow instructions first: 
 
   1. In Exosense, make sure to confirm your devices and add them to your group. For this, on `Devices` tab on navigator, choose `Unused devices` and add **assign to a group** then, like on following screen:
     ![usedevice.png](readme_resources/usedevice.png)
   1. Now, on *Device* tab in navigator, select one device. Then in *Channels* menu choose your resource(s) to have control on it. You can set a specific setting for your channel.
-  ![Choose channel.png](readme_resources/choosechannel.png)
+    ![Choose channel.png](readme_resources/choosechannel.png)
   In `Advanced`, turn on `Control`.
-  ![Settings channels.png](readme_resources/settingschannels.png)
+    ![Settings channels.png](readme_resources/settingschannels.png)
   If your devices are communicating using encoded values and port, fill port value corresponding to your channel. Fill `app_specific_config` with :
       ```
       {
         "port": <port value>
       }
       ```
-  1. Note that you can also change the global ConfigIO file under `modules/vendor/configIO` if there is no specific case per device. Add a Downlink pattern on the same box (`app_specific_config`). Downlink must contain a `+`sign in its pattern. By generating Mqtt downlink topic, it will be automatically replaced with *device identity*. Topic must be then like:
+  1. Note that you can also change the global ConfigIO file under `modules/vendor/configIO` if there is no specific case per device. Add a Downlink pattern on the same box (`app_specific_config`, a child node of `protocol_config`). Downlink must contain a `+`sign in its pattern. By generating Mqtt downlink topic, it will be automatically replaced with *device identity*. Topic must be then like:
       ```
       {
         "downlink_topic": <downlink_topic_containing_+_or_directly_id_of_device_if filled_in_exosense>
@@ -108,7 +105,8 @@ For information, Exosense doc page [is here](https://docs.exosite.io/schema/chan
   ![controlpanelcontrol.png](readme_resources/controlpanelcontrol.png)
   1. You can generate **data_out** with this panel and catch it in Murano !
 
-Now, a new **config_io** resource contains channels, and some of them are designed for downlink. In *data_out* from `vendor/c2c/transform`, specify some logic applied on **data_out** to fit with AWS IoT side. Mqtt messages will be sent automatically then. 
+Now, a new **config_io** resource contains channels, and some of them are designed for downlink. In *data_out* from `vendor/c2c/transform`, specify some logic applied on **data_out** to fit with AWS IoT side. Mqtt messages will be sent automatically then.
+For more information, Exosense doc page [is here](https://docs.exosite.io/schema/channel-signal_io_schema#device-control-interface-1).
 
 (B) Another way is to simulate a change by sending *data_out* data. For this, You can send JSON, caught in a new declared `Endpoint` from your App. See a detailed documentation about [create an endpoint in Murano App](http://docs.exosite.com/development/quickstart/#1.-first-endpoint).
   - A simple call to `setIdentityState(<your json body>)` from `c2c/murano2cloud` to simulate Exosense control, will change *data_out* resource as well as send Mqtt messages on topic dedicated for downlink. Make sure your body request, in JSON follows this structure : 
