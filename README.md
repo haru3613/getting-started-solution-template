@@ -79,9 +79,9 @@ Follow instructions first:
 
   1. In Exosense, make sure to confirm your devices and add them to your group. For this, on `Devices` tab on navigator, choose `Unused devices` and add **assign to a group** then, like on following screen:
     ![usedevice.png](readme_resources/usedevice.png)
-  1. Now, on *Device* tab in navigator, select one device. In *Channels* menu choose your resource(s) to have control on it. You can set a specific setting for your channel.
+  1. Now, on *Device* tab in navigator, select one device. In *Channels* menu choose your resources to have control on it:
     ![Choose channel.png](readme_resources/choosechannel.png)
-  In `Advanced`, turn on `Control`.
+  You can set a specific setting for your channel. In `Advanced`, turn on `Control`:
     ![Settings channels.png](readme_resources/settingschannels.png)
   If your devices are communicating using encoded values and port, fill port value corresponding to your channel. Fill `app_specific_config` with :
       ```
