@@ -17,7 +17,6 @@ local config_io = [[
       },
       "protocol_config": {
         "app_specific_config": {
-          "port": 1
         }
       }
     },
@@ -31,7 +30,6 @@ local config_io = [[
       },
       "protocol_config": {
         "app_specific_config": {
-          "port": 1
         }
       }
     },
@@ -44,9 +42,7 @@ local config_io = [[
       },
       "protocol_config": {
         "app_specific_config": {
-          "port": 5,
-          "downlink_topic": "things/+/sensors/downlink",
-          "ack_topic": "things/+/sensors/ack"
+          "downlink_topic": "g1/+/temperature/downlink"
         }
       }
     }

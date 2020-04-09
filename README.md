@@ -9,6 +9,8 @@ See related documentation on http://docs.exosite.com/connectivity/cloud2cloud/
 
 - [Using this project](#using-this-project)
 - [Start synchronizing devices with MQTT](#start-synchronizing-devices-with-aws-iot)
+- [Get Uplink](#get-uplinks)
+- [Synchronize with Exosense and send downlinks](#send-downlinks)
 - [Questions / Answers](#questions-answers)
 - [Types of Integration](#types-of-integration)
 - [Customization](#customization)
@@ -68,9 +70,17 @@ Now, any incoming message will be sent and interpreted in `cloud2murano`. And `v
 When receiving messages, it will initially create devices, and then update with further incoming data. You can see available devices in the `Devices` tab from the App. incoming data is filled first in the `data_in` resource.
 
 
-**Synchronize with Exosense**
+---
+## Get Uplinks
+ 
+ -To be released soon
 
-You can then, if needed, synchronize something to AWS IoT. Follow just these steps:
+---
+## Send Downlinks
+
+- to be completed soon
+
+You can then, if needed, synchronize Exosense to be able to send downlink (control) to your device. Follow just these steps:
 
 In Exosense, any control over a resource (like a trigger On/Off Panel on dashboard on a device) will generate a new **data_out** resource on Murano side. Then message will be send to device through downlink. On your ConfigIO, there is a field for your controllable channels to define downlink topics. Please, note that you will need to fill the downlink address by replacing your device `identity` with `+`, making a pattern definition. That will be automatically replaced when generating a mqtt downlink message for a specific identity of device. Click on this image (flow helper) for getting all information: 
   ![flow_uplink_downlink.png](readme_resources/flow_uplink_downlink_AWS.png)
