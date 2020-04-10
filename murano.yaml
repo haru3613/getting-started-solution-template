@@ -9,6 +9,31 @@ info:
 options:
   merge: true
 
+env_schema:
+  description: Environment variables
+  dev_mode:
+    type: string
+    description: Development mode for more verbose logs
+    default: "false"
+    enum: ["true", "false"]
+  ack_channel_id:
+    type: string
+    description: ExoSense channel ID used for acknowledgement of multi-control
+    default: "ACK"
+  ack_channel_type:
+    type: string
+    description: Channel data type
+    default: "integer"
+    enum: ["string", "integer", "number"]
+  max_rows:
+    type: string
+    description: Max. number of control channels in a single CSV
+    default: "1000"
+  max_devices:
+    type: string
+    description: Max. number of devices in a single CSV
+    default: "100"
+
 services:
   location: services
   include: '**/*.lua'
