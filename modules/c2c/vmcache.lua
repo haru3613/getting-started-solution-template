@@ -29,7 +29,7 @@ function cache.AddressMatchWith(str, generic_path)
     if index == nil then
       return str == generic_path
     end
-    return str:sub(0, #(generic_path:sub( 0, index-1))) == generic_path:sub( 0, index-1) and (generic_path:sub(index+1) == "" or str:sub(-#(generic_path:sub(index+1))) == generic_path:sub(index+1))
+    return str:sub(1, #(generic_path:sub( 1, index-1))) == generic_path:sub( 1, index-1) and (generic_path:sub(index+1) == "" or str:sub(-#(generic_path:sub(index+1))) == generic_path:sub(index+1))
   end
   return false
 end

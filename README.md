@@ -74,11 +74,11 @@ This template handles different kind of devices: those sending on one topic diff
 At any time, you can refer to these two diagrams to help you.
 The first case, if there are different *channels* on same uplink and/or need of *encode* some value before getting it.
 ![uplink by transform set up](readme_resources/uplink_by_transform.png)
-Case 1 : as it is described, set a pattern of your `uplink topic` (replace `id device` entry with `+` ) inside `uplink_decoding` of your `transform` module (`vendor/c2c/transform.lua`). You have to write up a function that will decode your data, and create explicit channels name using provided channels, like in this example with `ch1`, `ch2`, `ch3` that will become `Temp`, `Hum`, `Noise`.
+Case 1 : Go to `transform` module (`vendor/c2c/transform.lua`). Inside `uplink_decoding` add a key which is a pattern of your `uplink topic` using this *wildcard*: replace `id device` entry with `+`. You have to write up a function associated with the key that will decode your data, and create explicit channels name using provided channels, like in this example with `ch1`, `ch2`, `ch3` that will become `Temp`, `Hum`, `Noise`.
 
 The second case is if your device sends on a *single channel* a *readable value* so that you don't need to decode anything:
 ![uplink by configio set up](readme_resources/uplink_by_configio.png)
-Case 2 : as it is described in this second example, you need to set a logic, as each uplink is linked with a specific channel (associativity in the second case is 1 to 1). Set a pattern of your `uplink topic` inside your *channel definition* of your `ConfigIO` module (`vendor/configIO.lua`). For this, fill `protocol_config`.`app_specific_config`.`uplink_topic`, make sure you add `+` to create a topic pattern that will match any `device id`).
+Case 2 : as it is described in this second example, you need to set a logic, as each uplink is linked with a specific channel (associativity in the second case is 1 to 1). Set a pattern of your `uplink topic` inside your *channel definition* of your `ConfigIO` module (`vendor/configIO.lua`). For this, fill `protocol_config`.`app_specific_config`.`uplink_topic`, make sure you add `+` (*wildcard*) to create a topic pattern that will match any `device id`).
 
 Note also that if you have a specific `configIO` resource on your `device`, it will be considered a second priority, but can be useful if you want to define a specific uplink associated with your device. In that case you don't need to add `+` but enter explicit value.
 When receiving messages, it will initially create devices, and then update its resources with further incoming data. You can see available devices in the `Devices` tab from the App. incoming data is filled first in the `data_in` resource.
@@ -90,7 +90,7 @@ Before sending any message to device, the template must rely on a downlink decla
 
 ![downlink set up murano](readme_resources/downlink_config.png)
 
-  1. If there is no specific case per device you can change the global ConfigIO file under `modules/vendor/configIO`. Add a Downlink address depending on a `channel` name, fill `protocol_config`.`app_specific_config`.`downlink_topic`. As for uplink device topic definition, you will need to replace your device `identity` with `+`, in the pattern definition. That will be automatically replaced when generating a mqtt downlink message for a specific identity of device. 
+  1. If there is no specific case per device you can change the global ConfigIO file under `modules/vendor/configIO`. Add a Downlink address depending on a `channel` name, fill `protocol_config`.`app_specific_config`.`downlink_topic`. As for uplink device topic definition, you will need to replace your device `identity` with `+` which is like a *wildcard*, in the pattern definition. That will be automatically replaced when generating a mqtt downlink message for a specific identity of device. 
   1. Set a specific setting for your channel in ConfigIO as it is one you have control on it. Simply add a boolean (`true`) in `properties`.`control` of your channel definition.
   1. Second logic is not compulsory, but if you need to encode your data and change the field name: add a function in `downlink_encoding` from transform module (`modules/vendor/c2c/transform.lua`). Logic is slightly different from uplink decoding as the `key` is the `channel` on which you're controlling it and not the topic name.
 
@@ -115,6 +115,12 @@ This template uses cache for store values (ex. channel associated with your topi
 
 *How I can write lua code to decode or encode inside transform module ?*
 **Transform** module from *vendor* folder is safe and persistent, you should add your decoding and encoding logic inside. Add your logic given the channel name, in `downlink_encoding` or `uplink_decoding`. It will rely on some functions that parse bytes. A library is provided in `bytes/parser_factory` for general cases like decode *floats*, *char*. Or encode *boolean* in hex value.
+
+*Should I configure something if my device sends uplink without identity field* ?
+With or without *identity* field, both case supported:
+- Your device has a field identity in uplink : nothing to do !
+- Your device doesn't have, no worries. Because you provided a *wildcard* "+" on *subscribed topics* in **Mqtt client service**, an automatic process will associate the "+" with the *device id* contained in the path (uplink topic), when topics are matching.
+You can have unexpected results in the following case: you defined one of *subscribing topics* with at least 2 wildcards "+" or you defined explicit topics without *wildcard*. The identity will be the full path then.
 
 *What are resources filled on my devices, is there a description ?*
 A description of device resource can be explained here: 

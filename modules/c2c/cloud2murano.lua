@@ -22,6 +22,9 @@ function findSameInTable(table, candidate)
   return nil
 end
 
+function findplus(address)
+  return address:match'^.*()+'
+end
 -- Propagate event to Murano applications
 function cloud2murano.trigger(identity, event_type, payload, options)
     local event = {
@@ -96,6 +99,41 @@ function cloud2murano.data_in(identity, data, options)
     timestamp = utils.getTimestamp(options.timestamp)
   }}
   return cloud2murano.trigger(identity, "data_in", payload, options)
+end
+
+function cloud2murano.findIdfromParameters(topic)
+  -- call if uplink data does not contains identity, and can detect identity given topic path, as MQtt service client uses wildcard "+" in definition
+  -- Can return :
+  --  <id> , that is the string matching wildcard "+" if one of the topic defined in Mqtt service client is matching with topic function parameter, and contain just 1 "+"
+  --   <full topic> if there is a topic in mqtt service client containing a least 2 wildcard "+"
+  --   <full topic> if there is a topic in mqtt without any wildcard "+" but matching with topic function parameter
+  for _,topic_sub in pairs(Config.getParameters({service = "mqtt"}).parameters.topics) do
+    local index = findplus(topic_sub)
+    if index ~= nil then
+      local too_much = findplus(topic_sub:sub(1, index-1))
+      if too_much ~= nil then
+        return topic
+      end
+      if string.sub(topic_sub, 1, index - 1) == string.sub(topic, 1, index - 1) then
+        -- if match with first part ( before "+" wildcard comparison)
+        if topic_sub:sub(index+1) == "" or topic_sub:sub(index + 1) == nil then
+          -- if no second part
+          return topic:sub(index)
+        end
+        local sec_part = topic_sub:sub(index + 1)
+        local long_rel = topic:sub(index):find("/") and topic:sub(index):find("/") - 1
+        -- long_rel is the relative length of the identifier in topic
+        if topic:sub(-#(sec_part)) == sec_part and (index + long_rel -1 + #sec_part) == #topic then
+          return topic:sub(index, index + long_rel - 1)
+        end
+      end
+    else
+      if topic == topic_sub then
+        return topic
+      end
+    end
+  end
+  return nil
 end
 
 function cloud2murano.lookUpTopicinTransform(data)
@@ -177,6 +215,9 @@ function cloud2murano.callback(cloud_data_array)
   local device_to_upd = {}
   for k, cloud_data in pairs(cloud_data_array) do
     local data = from_json(cloud_data.payload)
+    if data.identity == nil then
+      data.identity = cloud2murano.findIdfromParameters(cloud_data.topic)
+    end
     if data.identity ~= nil then
       data.topic = cloud_data.topic
       local topic_from_transform = cloud2murano.lookUpTopicinTransform(data)
