@@ -19,11 +19,9 @@ env_schema:
   envv2:
     type: string
     description: ExoSense channel ID used for acknowledgement of multi-control
-    default: "ACK"
   envv3:
     type: string
     description: Channel data type
-    default: "integer"
     enum: ["string", "integer", "number"]
   envv4:
     type: string
