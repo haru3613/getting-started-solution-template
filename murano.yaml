@@ -9,30 +9,30 @@ info:
 options:
   merge: true
 
-env_schema:
-  description: Environment variables
-  envv1:
-    type: string
-    description: Development mode for more verbose logs
-    default: "false"
-    enum: ["true", "false"]
-  envv2:
-    type: string
-    description: ExoSense channel ID used for acknowledgement of multi-control
-    default: "ACK"
-  envv3:
-    type: string
-    description: Channel data type
-    default: "integer"
-    enum: ["string", "integer", "number"]
-  envv4:
-    type: string
-    description: Max. number of control channels in a single CSV
-    default: "1000"
-  envv5:
-    type: string
-    description: Max. number of devices in a single CSV
-    default: "100"
+# env_schema:
+#   description: Environment variables
+#   envv1:
+#     type: string
+#     description: Development mode for more verbose logs
+#     default: "false"
+#     enum: ["true", "false"]
+#   envv2:
+#     type: string
+#     description: ExoSense channel ID used for acknowledgement of multi-control
+#     default: "ACK"
+#   envv3:
+#     type: string
+#     description: Channel data type
+#     default: "integer"
+#     enum: ["string", "integer", "number"]
+#   envv4:
+#     type: string
+#     description: Max. number of control channels in a single CSV
+#     default: "1000"
+#   envv5:
+#     type: string
+#     description: Max. number of devices in a single CSV
+#     default: "100"
 
 services:
   location: services
