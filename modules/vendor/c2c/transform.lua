@@ -20,22 +20,21 @@ local function decode_temp_status(cloud_data)
 end
 
 transform.uplink_decoding = {
-  -- keys MUST match the last string (EndsWith) of an uplink topic, to route to specific decoding logic.
+  -- keys MUST match the pattern of an uplink topic, to route to specific decoding logic ("+" character is ignored).
   ["g1/+/temperature/uplink"] = decode_temp_status
   -- Other Cases for other topics must be implemented here
 }
 
 -- Here downling channels will be transformed to expected value read in device (downlink)
--- On config IO, corresponding to channel(s) MUST defines `properties.control` to `true`
+-- On config IO, corresponding to channel(s) MUST defines `properties.control` to `true`, and `downlink_topic` filled eventually with a wildcard `+`
 local downlink_encoding = {
   ["button_push"] = function(new_machine_status) 
   return {
     -- to generate a encoded message
     ["data"] = parser_factory.sendbool(tostring(new_machine_status))
-    -- port is set automatically from the configIO `protocol_config.app_specific_config.port` value
   }
   end
-  -- Other Cases for other ports must be implemented
+  -- Other Cases for other channel must be implemented
 }
 
 function transform.data_in(cloud_data, key)

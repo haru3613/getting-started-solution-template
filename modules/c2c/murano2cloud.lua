@@ -33,7 +33,7 @@ function dummyEventAcknowledgement(operation)
   end
 end
 
--- function which is the real setIdentityState, dedicated for data_out and sends mqtt message then
+-- function which is the real setIdentityState, dedicated for data_out and sends mqtt message then, eventually after encode value
 function murano2cloud.updateWithMqtt(data, topic)
   local message, error = device2.setIdentityState(data)
   if error then
@@ -75,12 +75,12 @@ function murano2cloud.setIdentityState(data)
       return device2.setIdentityState(data)
     end
     if data.data_out ~= nil then
-      -- inside will be : channel name, given as key to find corresp. port
       local channel = next(from_json(data.data_out))
       local topic_downlink = c.getDownlinkUseCache(data.identity, channel)
+      -- a downlink topix must be described in configIO report to README
       -- by the way, cache has been eventually refreshed during previous command
       if topic_downlink ~= nil then
-        --find a port to detect wether or not use encode from transform module.
+        -- updateWithMqtt : will eventually encode value before publish
         return murano2cloud.updateWithMqtt(data, topic_downlink)
       else
         --no topic, means nothing to do 

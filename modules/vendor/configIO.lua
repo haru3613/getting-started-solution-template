@@ -1,7 +1,7 @@
 -- This module handle 'configIO' metadata generation for Exosense applications
 -- Define & customize here the device data schema matching your devices settings, as described in https://github.com/exosite/industrial_iot_schema
 -- This schema will be applied by default to all devices. However, user can update it through ExoSense per device.
--- IMPORTANT: All channels configuration MUST defines the device sensor port number in the attribute `protocol_config.app_specific_config.port`
+-- IMPORTANT: follow README, all channell must define an uplink_topic (IF ANY IS SET IN TRANSFORM MODULE). Define the uplink_topic with a wildcard `+` replacing id of devices  in the attribute `protocol_config.app_specific_config.uplink_topic` (or even downlink_topic)
 --
 -- This file is in the 'vendor' safeNamespace and changes will persists upon template updates
 
