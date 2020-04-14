@@ -215,9 +215,7 @@ function cloud2murano.callback(cloud_data_array)
   local device_to_upd = {}
   for k, cloud_data in pairs(cloud_data_array) do
     local data = from_json(cloud_data.payload)
-    if data.identity == nil then
-      data.identity = cloud2murano.findIdfromParameters(cloud_data.topic)
-    end
+    data.identity = data.identity or cloud2murano.findIdfromParameters(cloud_data.topic)
     if data.identity ~= nil then
       data.topic = cloud_data.topic
       local topic_from_transform = cloud2murano.lookUpTopicinTransform(data)
