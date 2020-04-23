@@ -11,6 +11,7 @@ See related documentation on http://docs.exosite.com/connectivity/cloud2cloud/
 - [Start synchronizing with AWS IoT](#start-synchronizing-Murano-with-aws-iot)
 - [Get Uplink](#get-uplinks)
 - [Synchronize with Exosense and send downlinks](#send-downlinks)
+- [Case : Use of Aws Device Shadow](#use-of-aws-device-shadow)
 - [Questions / Answers](#questions-answers)
 - [Types of Integration](#types-of-integration)
 - [Customization](#customization)
@@ -111,6 +112,34 @@ This template uses cache for store values (ex. channel associated with your topi
 
 ---
 
+## Use of Aws Device Shadow
+
+This part is mandatory, don't read it if you don't use the device shadow feature.
+Device Shadow on AWS uses reserved MQTT topics to manage your device, to get or update the state information. The information got from this topic is like a digital twin of your real device. Because it uses reserved MQTT topics with a fixed pattern, integration is very easy for everyone who wants to manage a fleet of devices.
+In case you want to use it, make sure you have already configured it on your devices. You should follow the practices given by AWS on its [documentation site](https://docs.aws.amazon.com/iot/latest/developerguide/iot-device-shadows.html).
+There are two integrations provided on this template : 
+the way to get a device shadow :`get`, and the way to update a device shadow :`update`.
+Let's follow these three steps : 
+  1. You should first *subscribe* to shadow topics in you *MQTT client service*. That's why you can subscribe to all devices shadow with this pattern (as seen on first step, `+` will be considered as a wild-card to match every values of identity):
+  `$aws/things/+/shadow/#`
+  Or you can specify a specific _device identity_ instead of `+`.
+
+  1. To start seeing device data on Murano with device shadow, Call the endpoint to retrieve a device shadow state:
+      ```
+      GET /api/shadow/{identity}/get
+      ```
+      It will generate (by publishing on `$aws/things/+/shadow/get`) an incoming message on `$aws/things/+/shadow/get/accepted` topic. The message will be considered as an uplink message, but with the specific shadow format. That's why it is important to make sure your shadow structure follows the one given on AWS documentation.
+      Now, this uplink will update your device resource. You can even sync `data_in` device resources with content of `reported` values from shadow. That will let users save time as there is no need for configuration compared to classic cases where _uplink_downlink_ attribution in channels (in configIO) or in _transform_ module is expected.
+  
+  1. Next thing is to send data to the device. You need to follow the same flow described above for sending downlinks, except that _downlink_topic_ dedicated on your channel(s) on which you trigger a message will be set as:
+  `$aws/things/+/shadow/update`
+  Then, by using exosense or any other service and choosing to send data to device, murano will generate automatically a body to be sent in this MQTT topic and reach device using device shadow format. If you `update`, and device accepted your changes, you can verify changes under the resource `ack_meta` that is filled once the shadow is caught in a message from the `update/accepted` shadow topic.
+  Note also that you cannot use the transform module, for example if you need to encode the values before sending them. But you can choose to send multiple values at the same time. If you want to do so add also this _downlink_topic_ value on each channel concerned.
+
+  Final note : if device shadow fails for any operation get or update (is not _accepted_), you'll be able to detect it in the logs. Indeed, log can track messages got from every kind of Mqtt shadow reserved topics, as long as you put a wildcard `#` (to receive all shadows) like specified in the first point for _subscription_.
+
+---
+
 ## Questions Answers
 
 *How I can write lua code to decode or encode inside transform module ?*
@@ -128,7 +157,7 @@ A description of device resource can be explained here:
   - **data_out** : A message from Exosense, that is sent to device, after eventual value encoding .
   - **config_io** : Metadata describing relevant device data capabilities, like port used and channel name it has. It is used by Exosense too. If uses device control, will necessarily means enable *control* boolean. It is possible to give a pattern of downlink and ack topics also.
   - **uplink_meta** : All raw information got on the last uplink.
-  - **ack_meta** : All raw information got on the last device acknowledgment topic. After you send a downlink requiring acknowledgment.
+  - **ack_meta** : All raw information got on the last device acknowledgment topic, but at this moment is only used with device shadow feature.
 
 *How can I use Exosense to send messages to my device ?*
   In Exosense you need to create a template associated with your channel on which you have control on it. It will be possible to generate a downlink to your device then. Follow these steps: 
