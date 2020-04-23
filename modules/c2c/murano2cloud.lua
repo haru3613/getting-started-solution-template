@@ -96,16 +96,21 @@ function murano2cloud.setIdentityState(data)
       return device2.setIdentityState(data)
     end
     if data.data_out ~= nil then
-      local channel = next(from_json(data.data_out))
-      local topic_downlink = c.getDownlinkUseCache(data.identity, channel)
-      -- a downlink topic must be described in configIO report to README
-      -- by the way, cache has been eventually refreshed during previous command
-      if topic_downlink ~= nil then
-        -- updateWithMqtt : will eventually encode value before publish
-        return murano2cloud.updateWithMqtt(data, topic_downlink)
+      local converted_values = from_json(data.data_out)
+      if converted_values then
+        local channel = next(converted_values)
+        local topic_downlink = c.getDownlinkUseCache(data.identity, channel)
+        -- a downlink topic must be described in configIO report to README
+        -- by the way, cache has been eventually refreshed during previous command
+        if topic_downlink ~= nil then
+          -- updateWithMqtt : will eventually encode value before publish
+          return murano2cloud.updateWithMqtt(data, topic_downlink)
+        else
+          --no topic, means nothing to do 
+          log.error("No Downlink, no downlink topic found in Config IO for this channel." .. channel)
+        end
       else
-        --no topic, means nothing to do 
-        log.error("No Downlink, no downlink topic found in Config IO for this channel." .. channel)
+        log.error("Data_out values are not in JSON format")
       end
     end
   end

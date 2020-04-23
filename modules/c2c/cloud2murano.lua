@@ -110,22 +110,21 @@ end
 function cloud2murano.useShadow(data, topic)
   local result_message = {}
   -- fill this object to represent a device if it is a get/accepted topic.
-  if topic:sub(-6) == "get/accepted" then
+  if topic:sub(-12) == "get/accepted" then
     local ready_data = {}
-    ready_data.data_in = data.payload and data.payload.state and data.payload.state.reported
+    ready_data.data_in = data.state and data.state.reported
     ready_data.identity = topic:sub(13,-21)
     ready_data.topic = topic
-    ready_data.messageNumber = data.messageNumber
-    ready_data.metadata = to_json(data.payload.metadata)
-    ready_data.version = data.payload.version
-    ready_data.timestamp = data.payload.timestamp
+    ready_data.metadata = data.metadata and to_json(data.metadata)
+    ready_data.version = data.version
+    ready_data.timestamp = data.timestamp
     cloud2murano.validateUplinkDevice(ready_data)
   -- or also if it is update/accepted, an ack resource.
-  elseif topic:sub(-6) == "update/accepted" then
-    print("Receive part: " .. topic .. " " .. to_json(data))
+  elseif topic:sub(-15) == "update/accepted" then
+    print("Receive part ack: " .. topic .. " " .. to_json(data))
     cloud2murano.validateAckDevice(topic:sub(13,-24), data)
   else
-    print("Receive part: " .. topic .. " " .. to_json(data))
+    print("Receive shadow (other): " .. topic .. " " .. to_json(data))
   end
 end
 function cloud2murano.findIdfromParameters(topic)
@@ -202,16 +201,16 @@ end
 function cloud2murano.validateAckDevice(identity, uplink_data)
   local ready_data = {ack_meta = {}}
   ready_data.identity = identity
-  ready_data.ack_meta.messageNumber = uplink_data.messageNumber
-  ready_data.ack_meta.metadata = to_json(uplink_data.payload.metadata)
-  ready_data.ack_meta.version = uplink_data.payload.version
-  ready_data.ack_meta.timestamp = uplink_data.payload.timestamp
+  ready_data.ack_meta.metadata = uplink_data.metadata and to_json(uplink_data.metadata)
+  ready_data.ack_meta.version = uplink_data.version
+  ready_data.ack_meta.timestamp = uplink_data.timestamp
+  ready_data.ack_meta.state = uplink_data.state and to_json(uplink_data.state)
   return cloud2murano.data_in(ready_data.indentity, ready_data, options)
 end
 
 function cloud2murano.validateUplinkDevice(uplink_data)
   --generate an additional message if data_in is updated. in all case set uplink_meta state for device.
-  print("Receive part: " .. uplink_data.topic .. " " .. to_json(uplink_data))
+  print("Receive part : " .. uplink_data.topic .. " " .. to_json(uplink_data))
   local final_state = {}
   final_state.identity = uplink_data.identity
   final_state.data_in = uplink_data.data_in
