@@ -3,7 +3,6 @@ local murano2cloud = {}
 
 local device2  = murano.services.device2
 local transform = require("vendor.c2c.transform")
-local cloud2murano = require("c2c.cloud2murano")
 local c = require("c2c.vmcache")
 
 -- create a random ref for downlink
@@ -32,6 +31,20 @@ function dummyEventAcknowledgement(operation)
     return handle_device2_event(event)
   end
 end
+function murano2cloud.isShadowTopic(topic)
+  if topic:sub(1, 4) == "$aws" and (topic:sub(-6) == "update" or topic:sub(-7) == "update/") then
+    return true
+  else
+    return false
+  end
+end
+function murano2cloud.prepareShadowUpdate(data_out)
+  local table_shadow_update = {state= {desired = {}}}
+  for channel, v in pairs(data_out) do
+    table_shadow_update.state.desired.channel = v
+  end
+  return table_shadow_update
+end
 
 -- function which is the real setIdentityState, dedicated for data_out and sends mqtt message then, eventually after encode value
 function murano2cloud.updateWithMqtt(data, topic)
@@ -46,17 +59,25 @@ function murano2cloud.updateWithMqtt(data, topic)
   data_downlink.identity = data.identity
   local channel = next(data_out)
   if channel ~= nil then
-    -- add some custom part to downlink message, given transform module
-    local table_encoded = transform.data_out and transform.data_out(channel, data_out[channel]) -- template user customized data transforms
-    if table_encoded == nil then
-      table_encoded = {}
-      table_encoded[channel] = data_out[channel]
-      log.warn("no Transform configured, didn't encode values.")
+    if murano2cloud.isShadowTopic(topic) then
+      -- case with shadow, so that a specific structure is set
+      data_downlink = murano2cloud.prepareShadowUpdate(data_out)
+    else
+      -- add some custom part to downlink message, given transform module
+      local table_encoded = transform.data_out and transform.data_out(channel, data_out[channel]) -- template user customized data transforms
+      if table_encoded == nil then
+        table_encoded = {}
+        table_encoded[channel] = data_out[channel]
+        log.warn("no Transform configured, didn't encode values.")
+      end
+      for k, v in pairs(table_encoded) do
+        data_downlink[k] = v
+      end
     end
-    for k, v in pairs(table_encoded) do
-      data_downlink[k] = v
+    local published = Mqtt.publish({messages={{topic = topic, message = data_downlink}}})
+    if published.error then
+      return false
     end
-    Mqtt.publish({messages={{topic = topic, message = data_downlink}}})
     -- create fake event to simulate acknowledgment, fast and blindness logic.
     -- otherwise would wait for acknowledgment on /ack topic, and inside fields should match with ref field of downlink and identity of device
     return dummyEventAcknowledgement(data)
@@ -77,14 +98,14 @@ function murano2cloud.setIdentityState(data)
     if data.data_out ~= nil then
       local channel = next(from_json(data.data_out))
       local topic_downlink = c.getDownlinkUseCache(data.identity, channel)
-      -- a downlink topix must be described in configIO report to README
+      -- a downlink topic must be described in configIO report to README
       -- by the way, cache has been eventually refreshed during previous command
       if topic_downlink ~= nil then
         -- updateWithMqtt : will eventually encode value before publish
         return murano2cloud.updateWithMqtt(data, topic_downlink)
       else
         --no topic, means nothing to do 
-        log.error("No Downlink , no downlink topic found in Config IO for this channel." .. channel)
+        log.error("No Downlink, no downlink topic found in Config IO for this channel." .. channel)
       end
     end
   end

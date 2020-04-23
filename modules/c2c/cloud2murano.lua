@@ -101,6 +101,33 @@ function cloud2murano.data_in(identity, data, options)
   return cloud2murano.trigger(identity, "data_in", payload, options)
 end
 
+function cloud2murano.isShadowTopic(topic)
+  if topic:sub(1, 11) == "$aws/things" then
+    return true
+  end
+  return false
+end
+function cloud2murano.useShadow(data, topic)
+  local result_message = {}
+  -- fill this object to represent a device if it is a get/accepted topic.
+  if topic:sub(-6) == "get/accepted" then
+    local ready_data = {}
+    ready_data.data_in = data.payload and data.payload.state and data.payload.state.reported
+    ready_data.identity = topic:sub(13,-21)
+    ready_data.topic = topic
+    ready_data.messageNumber = data.messageNumber
+    ready_data.metadata = to_json(data.payload.metadata)
+    ready_data.version = data.payload.version
+    ready_data.timestamp = data.payload.timestamp
+    cloud2murano.validateUplinkDevice(ready_data)
+  -- or also if it is update/accepted, an ack resource.
+  elseif topic:sub(-6) == "update/accepted" then
+    print("Receive part: " .. topic .. " " .. to_json(data))
+    cloud2murano.validateAckDevice(topic:sub(13,-24), data)
+  else
+    print("Receive part: " .. topic .. " " .. to_json(data))
+  end
+end
 function cloud2murano.findIdfromParameters(topic)
   -- call if uplink data does not contains identity, and can detect identity given topic path, as MQtt service client uses wildcard "+" in definition
   -- Can return :
@@ -171,27 +198,18 @@ function cloud2murano.findRegexFromDevicesList(cloud_data_array)
   return my_dev_id
 end
 
--- function cloud2murano.setAckResource(data)
---   -- because of acknowledgment, need to store in ack_meta resource from device.
---   local final_state = {}
---   if data.identity ~= nil then
---     final_state.identity = data.identity
---     data.topic = nil
---     final_state.ack_meta = to_json(data)
---     -- Assumes incoming data by default
---     return cloud2murano.data_in(final_state.identity, final_state, options)
---   end
--- end
 
--- function cloud2murano.IsAckTopic(topic, identity)
---   local ack_top = c.getAckTopicUseCache(identity)
---   if ack_top ~= nil and topic == ack_top then
---     return true
---   end
---   return false
--- end
+function cloud2murano.validateAckDevice(identity, uplink_data)
+  local ready_data = {ack_meta = {}}
+  ready_data.identity = identity
+  ready_data.ack_meta.messageNumber = uplink_data.messageNumber
+  ready_data.ack_meta.metadata = to_json(uplink_data.payload.metadata)
+  ready_data.ack_meta.version = uplink_data.payload.version
+  ready_data.ack_meta.timestamp = uplink_data.payload.timestamp
+  return cloud2murano.data_in(ready_data.indentity, ready_data, options)
+end
 
-function cloud2murano.validateUplinkDevice(uplink_data, data_in_updated)
+function cloud2murano.validateUplinkDevice(uplink_data)
   --generate an additional message if data_in is updated. in all case set uplink_meta state for device.
   print("Receive part: " .. uplink_data.topic .. " " .. to_json(uplink_data))
   local final_state = {}
@@ -215,48 +233,52 @@ function cloud2murano.callback(cloud_data_array)
   local device_to_upd = {}
   for k, cloud_data in pairs(cloud_data_array) do
     local data = from_json(cloud_data.payload)
-    data.identity = data.identity or cloud2murano.findIdfromParameters(cloud_data.topic)
-    if data.identity ~= nil then
-      data.topic = cloud_data.topic
-      local topic_from_transform = cloud2murano.lookUpTopicinTransform(data)
-      if topic_from_transform ~= nil then
-        -- will use transform as it found the matching uplink topic 
-        -- set decoded message in data_in resource as json
-        data.data_in = transform.data_in and transform.data_in(data, topic_from_transform)
-        if data.data_in == nil then
-          log.warn('Cannot find transform function data_in, should uncomment')
-        end
-        result_tot[k] = cloud2murano.validateUplinkDevice(data)
-      else
-        -- lookup configio, extract a channel if in configio associated uplink topic is matching with topic (same ending)
-        local matched_channel_cache = cloud2murano.lookUpTopicinCache(data)
-        if matched_channel_cache ~= nil then
-          if matched_channel_cache ~= '' then
-            -- CASE 1 : in case of we know the key name already in body = name of channel
-            -- if data[matched_channel_cache] ~= nil then
-            --   data.data_in = {}
-            --   data.data_in[matched_channel_cache] = data[matched_channel_cache]
-            --   data.data_in = to_json(data.data_in)
-            --   result_tot[k] = cloud2murano.validateUplinkDevice(data)
-            -- else
-            --   log.warn('Cannot find claimed channel in payload, should verify configIO')
-            -- end
-            -- CASE 2 in case of we don't know the key name already in body.
-            for key, value in pairs(data) do
-              if key ~= "identity" and key ~= "timestamp" and key ~= "topic" then
-                data.data_in = {}
-                data.data_in[matched_channel_cache] = value
-                data.data_in = to_json(data.data_in)
-                break
-              end
-            end
-            if data.data_in == nil then
-              log.warn('Cannot find resource from payload, should verify configIO')
-            end
-            result_tot[k] = cloud2murano.validateUplinkDevice(data)
+    if cloud2murano.isShadowTopic(cloud_data.topic) then
+      data = cloud2murano.useShadow(data, cloud_data.topic)
+    else
+      data.identity = data.identity or cloud2murano.findIdfromParameters(cloud_data.topic)
+      if data.identity ~= nil then
+        data.topic = cloud_data.topic
+        local topic_from_transform = cloud2murano.lookUpTopicinTransform(data)
+        if topic_from_transform ~= nil then
+          -- will use transform as it found the matching uplink topic 
+          -- set decoded message in data_in resource as json
+          data.data_in = transform.data_in and transform.data_in(data, topic_from_transform)
+          if data.data_in == nil then
+            log.warn('Cannot find transform function data_in, should uncomment')
           end
+          result_tot[k] = cloud2murano.validateUplinkDevice(data)
         else
-          table.insert(device_to_upd, data)
+          -- lookup configio, extract a channel if in configio associated uplink topic is matching with topic (same ending)
+          local matched_channel_cache = cloud2murano.lookUpTopicinCache(data)
+          if matched_channel_cache ~= nil then
+            if matched_channel_cache ~= '' then
+              -- CASE 1 : in case of we know the key name already in body = name of channel
+              -- if data[matched_channel_cache] ~= nil then
+              --   data.data_in = {}
+              --   data.data_in[matched_channel_cache] = data[matched_channel_cache]
+              --   data.data_in = to_json(data.data_in)
+              --   result_tot[k] = cloud2murano.validateUplinkDevice(data)
+              -- else
+              --   log.warn('Cannot find claimed channel in payload, should verify configIO')
+              -- end
+              -- CASE 2 in case of we don't know the key name already in body.
+              for key, value in pairs(data) do
+                if key ~= "identity" and key ~= "timestamp" and key ~= "topic" then
+                  data.data_in = {}
+                  data.data_in[matched_channel_cache] = value
+                  data.data_in = to_json(data.data_in)
+                  break
+                end
+              end
+              if data.data_in == nil then
+                log.warn('Cannot find resource from payload, should verify configIO')
+              end
+              result_tot[k] = cloud2murano.validateUplinkDevice(data)
+            end
+          else
+            table.insert(device_to_upd, data)
+          end
         end
       end
     end
