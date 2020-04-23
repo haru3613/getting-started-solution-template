@@ -1,0 +1,27 @@
+
+paths:
+  /api/shadow/{identity}/get:
+    parameters:
+      - name: identity
+        in: path
+        description: Device Id
+        required: true
+        type: string
+    get:
+      operationId: getAWSShadow
+      description: Publish on shadow topic get, to further have AWS shadow of device (identity)
+      tags:
+        - shadows
+      security: []
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: "#/definitions/PublishedMessage"
+        default:
+          description: Unexpected error
+
+definitions:
+  PublishedMessage:
+    description: return Mqtt.Publish() message, after trying publishing on shadow topic get 
+    type: object
