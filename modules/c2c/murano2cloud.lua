@@ -116,7 +116,6 @@ function murano2cloud.setIdentityState(data)
   end
 end
 
-
 -- Function for recurrent pool action
 function murano2cloud.syncAll(data)
   if data ~= nil then

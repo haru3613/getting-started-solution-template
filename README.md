@@ -61,8 +61,10 @@ By using this template, start filling some AWS credentials and certificate value
 
 
 **Important** : 
-Add also some topics on which to subscribe on.
+Add also some topics on which to subscribe on. 
+Ex. `groupe/+/sensor/uplink`
 "+" is a wildcard enabling you to subscribe to all of the topics that are containing any characters at this path level, which is useful. In most case, it replaces *identity* entry of device in the topic path. You can add several "+" per field.
+You can even use "#", an other wildcard enabling you to subrcribe to all the topics that are containing any characters at this level path and childs level paths.
 
 Now, any incoming message will be sent and interpreted in `cloud2murano`. And `vendor/c2c/transform` has a role of parser module, and can transform data, to be used in exosense (**except if your device send explicit and readable values**). Please note you have to fill first a part in `vendor/c2c/transform` module or add a field in `vendor/c2c/configIO`. Details are explained in the next part.
 
@@ -96,13 +98,13 @@ Before sending any message to device, the template must rely on a downlink decla
   1. Second logic is not compulsory, but if you need to encode your data and change the field name: add a function in `downlink_encoding` from transform module (`modules/vendor/c2c/transform.lua`). Logic is slightly different from uplink decoding as the `key` is the `channel` on which you're controlling it and not the topic name.
 
 
-Note also for controllable channels, devices can perform acknowledgment message. If needed, you should add these topics in Mqtt client service to subscribe to them. You can then manually see them in `Logs` on Murano.
-
-
 **Post Scriptum**
-File `ConfigIO` in `vendor` is not synchronized with Exosense, it must be just a generic pattern, that will be personalized in Exosense in a second time for each device.
 
-This template will mock acknowledgment event when changing *data out* in exosense. In fact, by changing one value in Exosense (to create a downlink message to the device) the platform will rely on a quick acknowledgment from the device. But on its side, LoRaWAN protocol has another priority for this. Basically, the device will get downlink messages quickly, but acknowledgment isn't managed on the device side.
+When trying to publish, if your device is disconnected logic will be performed inside the broker, (in AWS IoT) and not inside the template. Report to the last question of the part [Questions/Answers](#questions-answers).
+
+This template will mock acknowledgment event when changing *data out* in exosense. In fact, by changing one value in Exosense (to create a downlink message to the device) the platform will just verify if it can publish to the broker, raising an eventual error. But it wont rely one device response, as it can expect a long pooling before downlink reaches the device and this one acknowledges it back to murano.
+
+File `ConfigIO` in `vendor` is not synchronized with Exosense, it must be just a generic pattern, that will be personalized in Exosense in a second time for each device.
 
 For some reason, if you want to redirect a bunch of topics to another one, you have to create a Rule to republish desired topics to your device or murano (bi-directional). [See there: use republish part](https://docs.aws.amazon.com/iot/latest/developerguide/iot-rule-actions.html).
 
@@ -149,15 +151,18 @@ Let's follow these three steps :
 With or without *identity* field, both case supported:
 - Your device has a field identity in uplink : nothing to do !
 - Your device doesn't have, no worries. Because you provided a *wildcard* "+" on *subscribed topics* in **Mqtt client service**, an automatic process will associate the "+" with the *device id* contained in the path (uplink topic), when topics are matching.
-You can have unexpected results in the following case: you defined one of *subscribing topics* with at least 2 wildcards "+" or you defined explicit topics without *wildcard*. The identity will be the full path then.
+You can have unexpected results in the following case: you defined one of *subscribing topics* with at least 2 wildcards "+" or you defined explicit topics without *wildcard*. Because the process to match identity would not work, identity will be the full path.
+
 
 *What are resources filled on my devices, is there a description ?*
 A description of device resource can be explained here: 
-  - **data_in** : readable data  with channel name(s), after eventual decoding, that is ready to be used by exosense.
-  - **data_out** : A message from Exosense, that is sent to device, after eventual value encoding .
-  - **config_io** : Metadata describing relevant device data capabilities, like port used and channel name it has. It is used by Exosense too. If uses device control, will necessarily means enable *control* boolean. It is possible to give a pattern of downlink and ack topics also.
-  - **uplink_meta** : All raw information got on the last uplink.
-  - **ack_meta** : All raw information got on the last device acknowledgment topic, but at this moment is only used with device shadow feature.
+|  Resource name | Explanation |
+| ------------- | ------------- |
+| **data_in**  | Readable data  with channel name(s), after eventual decoding, that is ready to be used by exosense.  |
+| **data_out**  | A message from Exosense, that is sent to device, after eventual value encoding.  |
+| **config_io**  | Metadata describing relevant device data capabilities, like port used and channel name it has. It is used by Exosense too. If uses device control, will necessarily means enable *control* boolean. It is possible to give a pattern of downlink and ack topics also.  |
+| **uplink_meta**  | All raw information got on the last uplink.  |
+| **ack_meta**  | All raw information got on the last device acknowledgment topic, but at this moment is only used with device shadow feature.  |
 
 *How can I use Exosense to send messages to my device ?*
   In Exosense you need to create a template associated with your channel on which you have control on it. It will be possible to generate a downlink to your device then. Follow these steps: 
@@ -200,6 +205,16 @@ Another way is to simulate a change, and send downlink to your device is followi
   }
   ````
  This endpoint is temporary if created from Murano App, and can be lost in further Auto-update from solution.
+
+ *What if my device is disconnected during the downlink part?*
+ When you're triggering a message to send to device, it is possible to have some issue with connection, so that message won't be delivered. It can be on the first case due to AWS IoT Broker not reached during Mqtt service in murano when trying to publish. In this case you'll have an information message like _Timeout error_ in Exosense or message in _logs_ on your Murano solution. In the second case, it is because the device is not connected, so that Aws IoT broker would have to wait on his side. But Murano would not be able to raise this eventual issue, and a help would be to rely on device shadow explained [above](#use-of-aws-device-shadow). The strategy of AWS Broker is explained on the following activity diagram: (to read from left to right)
+
+![image1](readme_resources/Brokercasenotreachdev.png)
+AWS IoT Broker uses a persistent state, so that it can store messages to send (Add in queue feature on diagram). And finally when the device is reconnected, within a limit of one hour it can send it. Otherwise messages are discarded.
+![image2](readme_resources/Brokercasereach.png)
+ Note also, persistent state can even not exist in some cases, if your device configured a _mqtt connection_ with `cleanSession` flag set to 1.
+ You may need to see [PersistentState of AWS IoT broker doc](https://docs.aws.amazon.com/iot/latest/developerguide/mqtt-persistent-sessions.html).  
+
 
 ---
 

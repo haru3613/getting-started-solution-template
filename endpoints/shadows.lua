@@ -4,7 +4,7 @@
 --#ENDPOINT GET /api/shadow/{identity}/get
 --#SECURITY none
 -- This endpoint publish on shadow topic get so that user can have last state of device.
--- Dont use it if not subscriber of shadows topic ( $aws/things/+/shadow/#)
+-- Do not use it if not subscriber of shadows topic in mqtt service ($aws/things/+/shadow/#)
 
 local identity = request.parameters.identity
 local message = " "

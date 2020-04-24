@@ -11,7 +11,7 @@ local device2 = murano.services.device2 -- to bypass the proxy (device2.lua)
 -- Beware of not creating recursive reference with murano2cloud
 
 
-function findSameInTable(table, candidate)
+function findSameTopicInTable(table, candidate)
   if table ~= nil then
     for k, v in pairs(table) do
       if c.AddressMatchWith(candidate, k) then
@@ -165,7 +165,7 @@ end
 function cloud2murano.lookUpTopicinTransform(data)
   if data.topic ~= nil then
     -- look if the uplink_topic key from array of channels (uplink_decoding object) ends same as topic
-    return findSameInTable(transform.uplink_decoding, data.topic)
+    return findSameTopicInTable(transform.uplink_decoding, data.topic)
   end
   return nil
 end
@@ -252,16 +252,6 @@ function cloud2murano.callback(cloud_data_array)
           local matched_channel_cache = cloud2murano.lookUpTopicinCache(data)
           if matched_channel_cache ~= nil then
             if matched_channel_cache ~= '' then
-              -- CASE 1 : in case of we know the key name already in body = name of channel
-              -- if data[matched_channel_cache] ~= nil then
-              --   data.data_in = {}
-              --   data.data_in[matched_channel_cache] = data[matched_channel_cache]
-              --   data.data_in = to_json(data.data_in)
-              --   result_tot[k] = cloud2murano.validateUplinkDevice(data)
-              -- else
-              --   log.warn('Cannot find claimed channel in payload, should verify configIO')
-              -- end
-              -- CASE 2 in case of we don't know the key name already in body.
               for key, value in pairs(data) do
                 if key ~= "identity" and key ~= "timestamp" and key ~= "topic" then
                   data.data_in = {}
@@ -298,16 +288,6 @@ function cloud2murano.callback(cloud_data_array)
     local matched_channel_cache = cloud2murano.lookUpTopicinCache(data)
     if matched_channel_cache ~= nil then
       if matched_channel_cache ~= '' then
-        -- CASE 1 : in case of we know the key name already in body = name of channel
-        -- if data[matched_channel_cache] ~= nil then
-        --   data.data_in = {}
-        --   data.data_in[matched_channel_cache] = data[matched_channel_cache]
-        --   data.data_in = to_json(data.data_in)
-        --   result_tot[k] = cloud2murano.validateUplinkDevice(data)
-        -- else
-        --   log.warn('Cannot find claimed channel in payload, should verify configIO')
-        -- end
-        -- CASE 2 in case of we don't know the key name already in body.
         for key, value in pairs(data) do
           if key ~= "identity" and key ~= "timestamp" and key ~= "topic" then
             data.data_in = {}
@@ -328,11 +308,5 @@ function cloud2murano.callback(cloud_data_array)
   end
   return result_tot
 end
-
---           local is_ack = cloud2murano.IsAckTopic(cloud_data.topic, data.identity)
---           if is_ack then
---             print("Receive part (acknowledgement): " .. cloud_data.topic .. " " .. cloud_data.payload)
---             cloud2murano.setAckResource(data)
---             result_tot[k] = {message = "Is an Acknowledgment"}
 
 return cloud2murano

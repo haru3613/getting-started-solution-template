@@ -1,8 +1,9 @@
 -- This file enable device data transformation for the template user
 -- MODIFY IT TO SUIT YOUR NEEDS.
 -- 
--- You MUST define here how to decode your device Hex values into a standard type for application ingestion.
--- All transformations MUST match channels defined in the module `vendor.configIO` , or associated with each device if used by exosense
+-- You MUST define here how to decode your device cahnnels values into a standard type for application ingestion.
+-- From-Uplink transformations MUST match generic topic sharing multiple devices with same structure messages
+-- From-Downlink transformations MUST match channels defined in the module `vendor.configIO` and shared by devices that are used in exosense
 --
 -- This file is in the 'vendor' safeNamespace and changes will persists upon template updates
 local transform = {}

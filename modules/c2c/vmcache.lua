@@ -56,18 +56,6 @@ function populateCacheConfigIO(my_config_io, identity, actual_uplink, keyst_cach
         end
         lru.set(identity .. "downlink" .. channel, downlink_topic, keyst_cache_timeout)
       end
-      -- local ack_topic = nil
-      -- if prop.protocol_config.app_specific_config.ack_topic and activate_control then
-      --   local raw_ack = prop.protocol_config.app_specific_config.ack_topic
-      --   local index_plus = findplus(raw_ack)
-      --   if index_plus ~= nil then
-      --     -- If there is a plus, change it to replace field with identity, to generate an explicit downlink topic
-      --     ack_topic = string.sub(raw_ack, 0, index_plus-1) .. identity .. string.sub(raw_ack, index_plus+1)
-      --   else
-      --     ack_topic = raw_ack
-      --   end
-      --   lru.set(identity .. "ack", ack_topic, keyst_cache_timeout)
-      -- end
     end
   end
 end
@@ -155,13 +143,7 @@ function cache.getDownlinkUseCache(identity, channel_data_out)
   return downlink_topic
 end
 
--- function cache.getAckTopicUseCache(identity)
---   -- return acknowledgment topic for device id
---   local ack_topic = lru.get(identity .. "ack")
---   return ack_topic
--- end
-
--- overload vmcache for MQTT senseway
+-- overload vmcache for MQTT 
 function cache.getChannelUseCache(topic)
   -- return : channel taken from cache, or nil 
   -- depends topic value.
